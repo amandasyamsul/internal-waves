@@ -5,6 +5,8 @@ close all; clear all; clc
 
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/loadsvg_2');
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
+addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/code');
+
 
 % setup filename file
 % !ls -1 0*svg > Filenames
