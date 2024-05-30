@@ -5,18 +5,68 @@ close all; clear all; clc
 
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/loadsvg_2');
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
-addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/code');
-
 
 % setup filename file
 % !ls -1 0*svg > Filenames
 
-[velocity_error, velocity] = calculate_velocity('0711_chosen', true)
+
+%%
+% [velocity_error, velocity] = calculate_velocity('0704_chosen', true)
+
+% Initialize arrays to store velocities and velocity errors
+velocity_error_array = [];
+velocity_array = cell(1, 13);  % Use a cell array to store velocities of varying sizes
+
+% Loop through the days
+for day = 1:13
+    % Construct the file name based on the day
+    if day < 10
+        file_name = sprintf('070%d_chosen', day);
+    else
+        file_name = sprintf('07%d_chosen', day);
+    end
+    
+    % Construct the full path to the file in the 'annotated' directory
+    full_file_path = fullfile('annotated', file_name);
+    
+    % Check if the file exists
+    if exist(full_file_path, 'file')
+        % Calculate velocity and store the results
+        [velocity_error, velocity] = calculate_velocity(file_name, true);
+        
+        % Store the results in the arrays
+        % velocity_error_array = [velocity_error_array; velocity_error];
+        velocity_array{day} = velocity';  % Store each velocity as a cell
+    else
+        % Skip if the file does not exist
+        fprintf('File %s does not exist. Skipping...\n', full_file_path);
+    end
+end
+
+% Display or process the results as needed
+disp('Velocity errors:');
+disp(velocity_error_array);
+
+disp('Velocities:');
+disp(velocity_array);
+
+%%
+
+velocity(1) = NaN;
+
+x_nums = 1:length(velocity);
+figure()
+hold on
+errorbar(x_nums, velocity,velocity_error,'DisplayName', 'automatic measurements');
+xlabel('x axis');
+ylabel('velocity (m/s)');
+title('automatically measured velocities');
+legend show;
+hold off
 
 %% Comparing to manually measured values
 
-velocity(1) = NaN; % Standardizing with manual measurements
-compare('dist0711.csv',velocity,velocity_error)
+% compare('dist0711.csv',velocity,velocity_error)
 
 %% Functions
 
