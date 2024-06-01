@@ -9,66 +9,127 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
 % setup filename file
 % !ls -1 0*svg > Filenames
 
-
 %%
+[velocity_array, velocity_error_array] = calculate_multiday(13);
+
+plot_multiday2(13, velocity_array, velocity_error_array)
+
 % [velocity_error, velocity] = calculate_velocity('0704_chosen', true)
-
-% Initialize arrays to store velocities and velocity errors
-velocity_error_array = [];
-velocity_array = cell(1, 13);  % Use a cell array to store velocities of varying sizes
-
-% Loop through the days
-for day = 1:13
-    % Construct the file name based on the day
-    if day < 10
-        file_name = sprintf('070%d_chosen', day);
-    else
-        file_name = sprintf('07%d_chosen', day);
-    end
-    
-    % Construct the full path to the file in the 'annotated' directory
-    full_file_path = fullfile('annotated', file_name);
-    
-    % Check if the file exists
-    if exist(full_file_path, 'file')
-        % Calculate velocity and store the results
-        [velocity_error, velocity] = calculate_velocity(file_name, true);
-        
-        % Store the results in the arrays
-        % velocity_error_array = [velocity_error_array; velocity_error];
-        velocity_array{day} = velocity';  % Store each velocity as a cell
-    else
-        % Skip if the file does not exist
-        fprintf('File %s does not exist. Skipping...\n', full_file_path);
-    end
-end
-
-% Display or process the results as needed
-disp('Velocity errors:');
-disp(velocity_error_array);
-
-disp('Velocities:');
-disp(velocity_array);
-
-%%
-
-velocity(1) = NaN;
-
-x_nums = 1:length(velocity);
-figure()
-hold on
-errorbar(x_nums, velocity,velocity_error,'DisplayName', 'automatic measurements');
-xlabel('x axis');
-ylabel('velocity (m/s)');
-title('automatically measured velocities');
-legend show;
-hold off
 
 %% Comparing to manually measured values
 
 % compare('dist0711.csv',velocity,velocity_error)
 
-%% Functions
+function [velocity_array, velocity_error_array]=calculate_multiday(number_of_days)
+    % Initialize arrays to store velocities and velocity errors
+    velocity_error_array = cell(1, number_of_days);
+    velocity_array = cell(1, number_of_days);  % Use a cell array to store velocities of varying sizes
+    
+    % Loop through the days
+    for day = 1:number_of_days
+        % Construct the file name based on the day
+        if day < 10
+            file_name = sprintf('070%d', day);
+        else
+            file_name = sprintf('07%d', day);
+        end
+        
+        % Construct the full path to the file in the 'annotated' directory
+        full_file_path = fullfile('annotated', file_name);
+        
+        % Check if the file exists
+        if exist(full_file_path, 'file')
+            % Calculate velocity and store the results
+            [velocity_error, velocity] = calculate_velocity(file_name, false);
+            velocity(1) = NaN;
+            % Store the results in the arrays
+            velocity_array{day} = velocity';  % Store each velocity as a cell
+            velocity_error_array{day} = velocity_error';
+        else
+            % Skip if the file does not exist
+            fprintf('File %s does not exist. Skipping...\n', full_file_path);
+        end
+    end
+
+    % Display or process the results as needed
+    disp('Velocity errors:');
+    disp(velocity_error_array);
+    
+    disp('Velocities:');
+    disp(velocity_array);
+end
+
+function plot_multiday2(number_of_days, velocity_array, velocity_error_array)
+    % Create a new figure
+    figure();
+    
+    % Count the number of non-empty days
+    non_empty_days = sum(~cellfun(@isempty, velocity_array));
+    
+    % Create a tiled layout with the specified number of columns
+    tiledlayout(1, non_empty_days);
+    
+    % Initialize the current plot index
+    current_plot_index = 1;
+    
+    % Iterate over the number of days
+    for day = 1:number_of_days
+        % Check if the velocity array for the day is not empty
+        if ~isempty(velocity_array{day})
+            % Create a new tile
+            nexttile(current_plot_index);
+            
+            % Create x axis values
+            x_nums = 1:length(velocity_array{day});
+            
+            % Plot the error bar
+            errorbar(x_nums, velocity_array{day}, velocity_error_array{day}, 'DisplayName', 'automatic measurements');
+            
+            % Label the axes
+            xlabel('x axis');
+            ylabel('velocity (m/s)');
+            
+            % Title the plot
+            title(['Automatically measured velocities for July ', num2str(day)]);
+            
+            % Show legend
+            legend show;
+            
+            % Increment the plot index
+            current_plot_index = current_plot_index + 1;
+        end
+    end
+end
+
+function plot_multiday(number_of_days, velocity_array, velocity_error_array)
+    % Create a new figure
+    figure();
+    
+    % Create a tiled layout with the specified number of rows
+    tiledlayout(1, number_of_days);
+    
+    % Iterate over the number of days
+    for day = 1:number_of_days
+        % Create a new tile
+        nexttile;
+        
+        % Create x axis values
+        x_nums = 1:length(velocity_array{day});
+        
+        % Plot the error bar
+        errorbar(x_nums, velocity_array{day}, velocity_error_array{day}, 'DisplayName', 'automatic measurements');
+        
+        % Label the axes
+        xlabel('x axis');
+        ylabel('velocity (m/s)');
+        
+        % Title the plot
+        title(['Automatically measured velocities for July', num2str(day)]);
+        
+        % Show legend
+        legend show;
+    end
+end
 
 function [velocity_error,velocity]=calculate_velocity(data_file,print_or_not)
 
