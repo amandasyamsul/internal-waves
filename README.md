@@ -3,4 +3,4 @@ Analysis of oceanic internal waves in the South China Sea using the Himawari-8 g
 
 
 Descriptions:
-- velocity_measurements.m: Code for analyzing position & velocity of oceanic internal waves near the Dongsha Atoll in 2020
+- velocity_calculation.m: Code for analyzing position & velocity of oceanic internal waves near the Dongsha Atoll in 2020
