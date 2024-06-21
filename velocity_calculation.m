@@ -1,6 +1,7 @@
 % Amanda Syamsul
 % April 11th 2024
-% Analysis on OIW Position & Velocity Near Dongsha Atoll in July-Dec 2020
+% Analysis on OIW Position & Velocity Near Dongsha Atoll
+
 close all; clear all; clc
 
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/loadsvg_2');
@@ -10,19 +11,16 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
 % !ls -1 0*svg > Filenames
 
 %%
-% [velocity_array, velocity_error_array] = calculate_multiday(31);
 
-% plot_multiday2(31, velocity_array, velocity_error_array)
-
-[velocity,velocity_error,time,azimuth,t_curr_array] = calculate_velocity('July2020', false);
+[velocity,velocity_error,time,mean_ms,t_curr_array] = calculate_velocity('July2020', false);
 
 %%
-figure(1);
+figure();
 
 % Plot velocity vs time with error bars
-errorbar(t_curr_array, velocity, velocity_error, 'o-', 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
+errorbar(t_curr_array, velocity, velocity_error, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
 hold on
-plot(t_curr_array, velocity,'r','LineWidth', 1,'DisplayName', 'velocity');
+plot(t_curr_array, velocity,'r-','LineWidth', 1,'DisplayName', 'velocity');
 xlabel('Time');
 ylabel('Velocity (m/s)');
 legend show;
@@ -31,60 +29,41 @@ set(gca, 'FontSize', 12);
 
 %%
 
+% Calculate the slope angle in degrees
+ms_degree = atand(mean_ms);
+% Convert the slope angle to azimuth
+% Assume north is 0 degrees, east is 90 degrees, etc.
+if ms_degree >= 0
+    azimuth = 90 - ms_degree;
+else
+    azimuth = 90 + abs(ms_degree);
+end
+
+% Ensure azimuth is within 0 to 360 degrees
+if azimuth < 0
+    azimuth = azimuth + 360;
+elseif azimuth >= 360
+    azimuth = azimuth - 360;
+end
+
+back_azimuth = azimuth + 180;
+
+%%
 % Create a scatter plot with azimuths
 figure;
-scatter(t_curr_array, azimuth-180, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b');
+scatter(t_curr_array, back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b');
 grid on;
 
 % Label the axes
+title('Direction of wave propagation')
 xlabel('Time');
-ylabel('Azimuth (degrees)');
+ylabel('Back azimuth (degrees)');
 
 %% Comparing to manually measured values
 
 % compare('dist0711.csv',velocity,velocity_error)
 
-function [velocity_array, velocity_error_array]=calculate_multiday(number_of_days)
-    % Initialize arrays to store velocities and velocity errors
-    velocity_error_array = cell(1, number_of_days);
-    velocity_array = cell(1, number_of_days);  % Use a cell array to store velocities of varying sizes
-    
-    % Loop through the days
-    for day = 1:number_of_days
-        
-        % Construct the file name based on the day
-        if day < 10
-            file_name = sprintf('070%d', day);
-        else
-            file_name = sprintf('07%d', day);
-        end
-        
-        % Construct the full path to the file in the 'annotated' directory
-        full_file_path = fullfile('annotated', file_name);
-        
-        % Check if the file exists
-        if exist(full_file_path, 'file')
-            % Calculate velocity and store the results
-            [velocity_error, velocity] = calculate_velocity(file_name, false);
-            velocity(1) = NaN;
-            % Store the results in the arrays
-            velocity_array{day} = velocity';  % Store each velocity as a cell
-            velocity_error_array{day} = velocity_error';
-        else
-            % Skip if the file does not exist
-            fprintf('File %s does not exist. Skipping...\n', full_file_path);
-        end
-    end
-
-    % Display or process the results as needed
-    disp('Velocity errors:');
-    disp(velocity_error_array);
-    
-    disp('Velocities:');
-    disp(velocity_array);
-end
-
-function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(data_file,print_or_not)
+function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(data_file,print_or_not)
 
     verbose = print_or_not; % default is to not print any statements/plots
 
@@ -99,6 +78,8 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
         prev = loadsvg(file1,1,1);
         curr = loadsvg(file2,1,1);
     
+        % Failsafe in case there is a smaller vector in the svg that should
+        % be ignored
         if (length(prev)>1)
             for icheck=1:length(prev)
                 Ncheck(icheck)=length(prev{icheck});
@@ -120,8 +101,8 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
         dt_steps = readmatrix('dt-picking.csv');
         
         % Extract last three digits from file names
-        prev_num = str2double(file1(end-6:end-4));
-        curr_num = str2double(file2(end-6:end-4));
+        prev_num = str2double(file1(end-14:end-11));
+        curr_num = str2double(file2(end-14:end-11));
 
         % Find the corresponding dt values from the CSV data
         prev_dt = find(dt_steps(:,1) == prev_num);
@@ -140,39 +121,42 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
       
         % Set datetime format for previous wave
         % Extract month, day, and time parts from the filename
-        month_prev = str2double(file1(1:2));
-        day_prev = str2double(file1(3:4));
-        time_prev = file1(5:7);
+        year_prev = str2double(file1(1:4));
+        month_prev = str2double(file1(5:6));
+        day_prev = str2double(file1(7:8));
+        time_prev = file1(9:12);
         
         % Determine hour and minute from the time part
-        if length(time_prev) == 3
-            hour_prev = str2double(time_prev(1));  % First digit is the hour
-            min_prev = str2double(time_prev(2:3)); % Last two digits are the minutes
+        if length(time_prev) == 4
+            hour_prev = str2double(time_prev(1:2));  % First two digits are the hour
+            min_prev = str2double(time_prev(3:4)); % Last two digits are the minutes
         else
             hour_prev = str2double(time_prev(1:2)); % First two digits are the hour
             min_prev = str2double(time_prev(3:4)); % Last two digits are the minutes
         end
         
         % Construct the datetime object assuming time is in AM UTC
-        t_prev = datetime(2020, month_prev, day_prev, hour_prev, min_prev, 0, 'TimeZone', 'UTC');
+        t_prev = datetime(year_prev, month_prev, day_prev, hour_prev, min_prev, 0, 'TimeZone', 'UTC');
 
         % Set datetime format for previous wave
         % Extract month, day, and time parts from the filename
-        month_curr = str2double(file2(1:2));
-        day_curr = str2double(file2(3:4));
-        time_curr = file2(5:7);
+        year_curr = str2double(file2(1:4));
+        month_curr = str2double(file2(5:6));
+        day_curr = str2double(file2(7:8));
+        time_curr = file2(9:12);
         
         % Determine hour and minute from the time part
-        if length(time_curr) == 3
-            hour_curr = str2double(time_curr(1));  % First digit is the hour
-            min_curr = str2double(time_curr(2:3)); % Last two digits are the minutes
+        if length(time_curr) == 4
+            hour_curr = str2double(time_curr(1:2));  % First two digits are the hour
+            min_curr = str2double(time_curr(3:4)); % Last two digits are the minutes
         else
             hour_curr = str2double(time_curr(1:2)); % First two digits are the hour
             min_curr = str2double(time_curr(3:4)); % Last two digits are the minutes
         end
         
         % Construct the datetime object assuming time is in AM UTC
-        t_curr = datetime(2020, month_curr, day_curr, hour_curr, min_curr, 0, 'TimeZone', 'UTC');
+        t_curr = datetime(year_curr, month_curr, day_curr, hour_curr, min_curr, 0, 'TimeZone', 'UTC');        
+        
         
         % Display the datetime object
         t_curr_array(f+1) = t_curr;
@@ -183,7 +167,7 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
         
         % Define latitude range covered by the image in meters
         lat_degrees = 1.5;
-        r_earth = 6378100; % meters
+        r_earth = 6378000; % meters
         lat_meters = (2*pi*r_earth*lat_degrees)/360;
         meters_per_pix=366.6227;
         
@@ -255,11 +239,12 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
             plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
             hold on;
             plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
+            legend show;
         end
     
         %%
         
-        % Cropping the longer vector
+        % Cropping the longer vector to match wave lengths-==========-8
         
         % Calculate y-lengths (ranges)
         yLengthPrev = max(y_prev) - min(y_prev);
@@ -332,7 +317,7 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
         end
             
         for i=1:length(fractions)
-            % Calculate the slope at varying points on the previous wave
+            % Calculate the slope at varying points on the previous wa8ve
             gap=10;
     
             % edit gap for waves that have too few points!
@@ -395,6 +380,7 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
             xs_den(i) = -(1/m1(i)) -m2(i);
             xs(i) = xs_num(i)/xs_den(i);
             ys(i) = m2(i) * (xs(i) - x2(i)) + y2(i);
+            ms(i) = (ys(i) - y1(i)) / (xs(i) - x1(i));
             
             xvals = 200:500;
             y_perp(:,i) = -(1/m1(i)) * (xvals - x1(i)) + y1(i);
@@ -412,8 +398,8 @@ function [velocity,velocity_error,time,azimuth,t_curr_array]=calculate_velocity(
             v(i) = distance_m(i)/dt;
         end
         
-        mean_slope = mean(slope_curr);
-        azimuth(f+1) = mean_slope;
+        % m* is the slope of the line connecting both waves
+        mean_ms(f+1) = mean(ms);
         time(f+1) = curr_num;
         avg_v = mean(v);
         velocity(f+1) = avg_v;
