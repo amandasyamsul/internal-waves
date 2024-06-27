@@ -10,22 +10,56 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
 % setup filename file
 % !ls -1 0*svg > Filenames
 
+% Read in CSV files
+
+luzon = readtable('luzon.csv');
+june = readtable('junedata.csv');
+july = readtable('julydata.csv');
+august = readtable('augdata.csv');
+
+%%
+% [auto_velocity,velocity_error,time,mean_ms,t_curr_array] = calculate_velocity('0713_chosen', false);
+% auto_velocity(1) = NaN
+% compare('manual0713',auto_velocity,velocity_error)
+
+%%
+% [l_time, l_vel, d_time, d_height] = tide_2019_2020();
+% 
+% l_dates = datetime(l_time, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
+% d_dates = datetime(d_time, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
+% %%
+% l_vel = l_vel ./ 100; % Convert cm/s to m/s
+% luzon = table(l_dates, l_vel);
+% dongsha = table(d_dates, d_height);
+%
+% writetable(luzon,'luzon.csv')
+% writetable(dongsha, 'dongsha.csv')
+
+
 %%
 
-[velocity,velocity_error,time,mean_ms,t_curr_array] = calculate_velocity('July2020', false);
+% [velocity,velocity_error,mean_ms,t_curr_array] = calculate_velocity('Aug2020', false, false);
 
 %%
-figure();
 
-% Plot velocity vs time with error bars
-errorbar(t_curr_array, velocity, velocity_error, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
-hold on
-plot(t_curr_array, velocity,'r-','LineWidth', 1,'DisplayName', 'velocity');
-xlabel('Time');
-ylabel('Velocity (m/s)');
-legend show;
-grid on;
-set(gca, 'FontSize', 12);
+figure()
+
+% Plot 1: Internal wave velocity
+subplot(2, 1, 1); % First subplot in a 2x2 grid
+plot_velocity(june)
+title('Internal wave velocities in June 2020');
+
+% Plot 2: Tidal velocity
+
+% Create a logical index for timeframe of choice
+luzon.l_dates = luzon.l_dates + hours(50); % timelag for waves to propagate from luzon strait
+timeframe = month(luzon.l_dates) == 6; % 6 for June
+
+subplot(2, 1, 2); % Second subplot in a 2x2 grid
+plot(luzon.l_dates(timeframe), luzon.l_vel(timeframe))
+title('Tidal velocities in the Luzon Strait in June 2020');
+xlabel('time');
+ylabel('velocity (m/s)');
 
 %%
 
@@ -34,38 +68,57 @@ ms_degree = atand(mean_ms);
 % Convert the slope angle to azimuth
 % Assume north is 0 degrees, east is 90 degrees, etc.
 if ms_degree >= 0
-    azimuth = 90 - ms_degree;
+    back_azimuth = 90 - ms_degree;
+    azimuth = back_azimuth + 180;
 else
-    azimuth = 90 + abs(ms_degree);
+    back_azimuth = 90 + abs(ms_degree);
+    azimuth = back_azimuth + 180;
 end
 
-% Ensure azimuth is within 0 to 360 degrees
-if azimuth < 0
-    azimuth = azimuth + 360;
-elseif azimuth >= 360
-    azimuth = azimuth - 360;
-end
+% % Ensure azimuth is within 0 to 360 degrees
+% if azimuth < 0
+%     azimuth = azimuth + 360;
+% elseif azimuth >= 360
+%     azimuth = azimuth - 360;
+% end
 
-back_azimuth = azimuth + 180;
-
-%%
 % Create a scatter plot with azimuths
 figure;
 scatter(t_curr_array, back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b');
 grid on;
 
 % Label the axes
-title('Direction of wave propagation')
+title('Direction of wave source')
 xlabel('Time');
 ylabel('Back azimuth (degrees)');
+
+%%
+
+% % Define column names
+% col_names = {'time', 'velocity', 'std_dev', 'azimuth', 'back_azimuth'};
+% 
+% % Create the table with variable names directly
+% T = table(t_curr_array', velocity', velocity_error', azimuth', back_azimuth', 'VariableNames', col_names);
+% 
+% % Write the table to a CSV file
+% writetable(T, 'augdata.csv');
 
 %% Comparing to manually measured values
 
 % compare('dist0711.csv',velocity,velocity_error)
+function plot_velocity(data_file)
+    % Plot velocity vs time with error bars
+    errorbar(data_file.time, data_file.velocity, data_file.std_dev, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
+    hold on
+    plot(data_file.time, data_file.velocity,'r-','LineWidth', 1,'DisplayName', 'velocity');
+    xlabel('Time');
+    ylabel('Velocity (m/s)');
+    legend show;
+    grid on;
+    set(gca, 'FontSize', 12);
+end
 
-function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(data_file,print_or_not)
-
-    verbose = print_or_not; % default is to not print any statements/plots
+function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_file, verbose, only_obs)
 
     data = readtable(data_file, 'ReadVariableNames', false); 
     
@@ -77,6 +130,7 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
     
         prev = loadsvg(file1,1,1);
         curr = loadsvg(file2,1,1);
+        obs = loadsvg('OBS.svg',1,1);
     
         % Failsafe in case there is a smaller vector in the svg that should
         % be ignored
@@ -157,19 +211,9 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
         % Construct the datetime object assuming time is in AM UTC
         t_curr = datetime(year_curr, month_curr, day_curr, hour_curr, min_curr, 0, 'TimeZone', 'UTC');        
         
-        
-        % Display the datetime object
-        t_curr_array(f+1) = t_curr;
-
-        if verbose
-            disp(t_curr);
-        end
-        
         % Define latitude range covered by the image in meters
-        lat_degrees = 1.5;
-        r_earth = 6378000; % meters
-        lat_meters = (2*pi*r_earth*lat_degrees)/360;
-        meters_per_pix=366.6227;
+        % Using scale bar in satellite images, 25 km = 70.03 pixels
+        meters_per_pix = 25000/70.03;
         
         % close all; clc
         
@@ -177,7 +221,8 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
         original_y_prev=prev{1,1}(:,2);
         original_x_curr=curr{1,1}(:,1);
         original_y_curr=curr{1,1}(:,2);
-    
+
+
         %% Interpolate data
     
         % Previous wave:
@@ -232,18 +277,16 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
     
         x_curr = x_sorted;
         y_curr = y_sorted;
-        %%
-    
+
         if verbose
             figure;
             plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
             hold on;
             plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
+            plot(obs_1, '-')
             legend show;
         end
-    
-        %%
-        
+
         % Cropping the longer vector to match wave lengths-==========-8
         
         % Calculate y-lengths (ranges)
@@ -298,6 +341,37 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
             x_prev = cropped_long_x;
         end
         
+
+        %% Use to only calculate near OBS
+        
+        if only_obs
+            %% Filter the arrays to keep only values between 350 and 450
+           
+            obs_filter_prev = x_prev >= 350 & x_prev <= 450; 
+            obs_filter_curr = x_curr >= 350 & x_curr <= 450;
+
+    
+            % Apply the filters
+            x_prev = x_prev(obs_filter_prev);
+            y_prev = y_prev(obs_filter_prev);
+            x_curr = x_curr(obs_filter_curr);
+            y_curr = y_curr(obs_filter_curr);
+    
+            % Skip iteration if any of the arrays are empty after filtering
+            if isempty(x_prev) || isempty(y_prev) || isempty(x_curr) || isempty(y_curr)
+                continue;
+            end
+        end
+        
+        % Failsafe for OBS -- skip if one wave is too short
+        if length(x_prev) < 0.2*length(x_curr)
+            continue
+        end
+
+        if length(x_curr) < 0.2*length(x_prev)
+            continue
+        end
+
         %% Finding measurement points:
     
         % Define the fractions of the line where you need the indices
@@ -305,19 +379,29 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
     
         % Preallocate the matrix to store results
         calc_points = zeros(length(fractions), 2);
-    
+
         % Loop over each fraction
         for i = 1:length(fractions)
             % Calculate the indices for the current and previous lines
-            index_curr = round(length(y_curr) * fractions(i));
             index_prev = round(length(y_prev) * fractions(i));
+            index_curr = round(length(y_curr) * fractions(i));
+
+            
+            % Test code to see if this solves issue of rounding to 0
+            if index_prev==0
+                continue
+            end
+
+            if index_curr==0
+                continue
+            end
     
             % Store the results in the matrix
             calc_points(i, :) = [index_prev index_curr];
         end
             
         for i=1:length(fractions)
-            % Calculate the slope at varying points on the previous wa8ve
+            % Calculate the slope at varying points on the previous wave
             gap=10;
     
             % edit gap for waves that have too few points!
@@ -328,7 +412,12 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
             if (calc_points(i,1) - gap)==0
                 gap=0;
             end
-    
+            
+            % Failsafe if vector is still too short -- skip to next iteration
+            if (calc_points(i,1) - gap)==0
+                continue
+            end
+
             x1a = x_prev(calc_points(i,1) - gap);
             y1a = y_prev(calc_points(i,1) - gap);
             
@@ -355,10 +444,16 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
             y1a= y_curr(calc_points(i,2) - gap);
             
             gap=10;
+
             if (calc_points(i,2) + gap)>length(x_curr)
                 gap=1; % this has to be fixed!!!!
             end
-    
+            
+            % Failsafe for OBS
+            if (calc_points(i,2) + gap)>length(x_curr)
+                continue
+            end
+
             x2a = x_curr(calc_points(i,2) + gap);
             y2a = y_curr(calc_points(i,2) + gap);
             slope_curr(i) = (y2a - y1a) / (x2a - x1a);
@@ -404,8 +499,14 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
         avg_v = mean(v);
         velocity(f+1) = avg_v;
         velocity_error(f+1)=std(v);
+
+        % Store the datetime object
+        t_curr_array(f+1) = t_curr;
+
+        if verbose
+            disp(t_curr);
+        end
     
-        
         %% logic testing
         if verbose
             figure(10)
@@ -416,6 +517,11 @@ function [velocity,velocity_error,time,mean_ms,t_curr_array]=calculate_velocity(
             plot(x_curr,y_curr,'k'); leg8 = "current wave";
             
             for p = 1:length(fractions)
+
+                if calc_points(p, 1) == 0
+                    continue
+                end
+
                 plot(x_prev(calc_points(p, 1)), y_prev(calc_points(p,1)), 'bo')
                 plot(x_curr(calc_points(p, 2)), y_curr(calc_points(p,2)), 'ko')
                 plot(xs(p),ys(p),'m*'); leg4 = "perp. intersect";
@@ -452,3 +558,4 @@ function compare(manual_velocity,auto_velocity,auto_velocity_error)
     legend show;
     hold off
 end
+
