@@ -10,19 +10,17 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
 % setup filename file
 % !ls -1 0*svg > Filenames
 
-% Read in CSV files
+%% Read in CSV files
 
 luzon = readtable('luzon.csv');
-june = readtable('junedata.csv');
-july = readtable('julydata.csv');
-august = readtable('augdata.csv');
+may = readtable('maydata.csv');
+may_obs = readtable('may_obs.csv')
+% june = readtable('junedata.csv');
+% june_obs = readtable('june_obs.csv');
+% july = readtable('julydata.csv');
+% july_obs = readtable('july_obs.csv');
+% august = readtable('augdata.csv');
 
-%%
-% [auto_velocity,velocity_error,time,mean_ms,t_curr_array] = calculate_velocity('0713_chosen', false);
-% auto_velocity(1) = NaN
-% compare('manual0713',auto_velocity,velocity_error)
-
-%%
 % [l_time, l_vel, d_time, d_height] = tide_2019_2020();
 % 
 % l_dates = datetime(l_time, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
@@ -35,31 +33,9 @@ august = readtable('augdata.csv');
 % writetable(luzon,'luzon.csv')
 % writetable(dongsha, 'dongsha.csv')
 
-
 %%
 
-% [velocity,velocity_error,mean_ms,t_curr_array] = calculate_velocity('Aug2020', false, false);
-
-%%
-
-figure()
-
-% Plot 1: Internal wave velocity
-subplot(2, 1, 1); % First subplot in a 2x2 grid
-plot_velocity(june)
-title('Internal wave velocities in June 2020');
-
-% Plot 2: Tidal velocity
-
-% Create a logical index for timeframe of choice
-luzon.l_dates = luzon.l_dates + hours(50); % timelag for waves to propagate from luzon strait
-timeframe = month(luzon.l_dates) == 6; % 6 for June
-
-subplot(2, 1, 2); % Second subplot in a 2x2 grid
-plot(luzon.l_dates(timeframe), luzon.l_vel(timeframe))
-title('Tidal velocities in the Luzon Strait in June 2020');
-xlabel('time');
-ylabel('velocity (m/s)');
+% [velocity,velocity_error,mean_ms,t_curr_array] = calculate_velocity('May2020', true, true);
 
 %%
 
@@ -83,7 +59,7 @@ end
 % end
 
 % Create a scatter plot with azimuths
-figure;
+figure(1);
 scatter(t_curr_array, back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b');
 grid on;
 
@@ -92,20 +68,65 @@ title('Direction of wave source')
 xlabel('Time');
 ylabel('Back azimuth (degrees)');
 
-%%
+%% Saving data to table & SVG
 
-% % Define column names
-% col_names = {'time', 'velocity', 'std_dev', 'azimuth', 'back_azimuth'};
-% 
-% % Create the table with variable names directly
-% T = table(t_curr_array', velocity', velocity_error', azimuth', back_azimuth', 'VariableNames', col_names);
-% 
-% % Write the table to a CSV file
-% writetable(T, 'augdata.csv');
+% Define column names
+col_names = {'time', 'velocity', 'std_dev', 'azimuth', 'back_azimuth'};
+T = table(t_curr_array', velocity', velocity_error', azimuth', back_azimuth', 'VariableNames', col_names);
+
+writetable(T,'may_obs.csv')
+
+%% Plots!
+
+figure(2)
+
+time_x = [datetime(2020, 5, 7, 3, 0, 0), datetime(2020, 5, 7, 7, 0, 0)];
+
+% Plot 1: Internal wave velocity
+subplot(2, 1, 1); % First subplot in a 2x2 grid
+plot_velocity(may_obs)
+xlim(time_x);
+title('Internal wave velocities in May 2020');
+
+% Plot 2: Tidal velocity
+% Create a logical index for timeframe of choice
+luzon.l_dates = luzon.l_dates + hours(50); % timelag for waves to propagate from luzon strait
+timeframe = month(luzon.l_dates) == 5;
+
+subplot(2, 1, 2); % Second subplot in a 2x2 grid
+plot(luzon.l_dates(timeframe), luzon.l_vel(timeframe))
+xlim(time_x);
+title('Tidal velocities in the Luzon Strait in May 2020 (50 hour lag)');
+xlabel('time');
+ylabel('velocity (m/s)');
 
 %% Comparing to manually measured values
 
-% compare('dist0711.csv',velocity,velocity_error)
+function plot_avg_velocity(data)
+
+    % Convert datetime to date only (removing time part)
+    data.DateOnly = dateshift(data.time, 'start', 'day');
+
+    % Group by date and calculate mean velocity and standard deviation
+    dailyStats = groupsummary(data, 'DateOnly', {'mean', 'std'}, 'velocity');
+    
+    % Extract necessary columns
+    avgTime = dailyStats.DateOnly;
+    avgVelocity = dailyStats.mean_velocity;
+    stdDevVelocity = dailyStats.std_velocity;
+
+    % Plotting
+    errorbar(avgTime, avgVelocity, stdDevVelocity, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
+    hold on;
+    plot(avgTime, avgVelocity, 'r-', 'LineWidth', 1, 'DisplayName', 'trend');
+    scatter(avgTime, avgVelocity, 'ko', 'Filled','DisplayName', 'average velocity');
+    xlabel('Time');
+    ylabel('Velocity (m/s)');
+    legend show;
+    grid on;
+    set(gca, 'FontSize', 12);
+end
+
 function plot_velocity(data_file)
     % Plot velocity vs time with error bars
     errorbar(data_file.time, data_file.velocity, data_file.std_dev, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
@@ -171,7 +192,6 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
         if verbose
           disp(['Time difference (dt) between SVG files: ' num2str(dt) ' seconds']);
         end
-
       
         % Set datetime format for previous wave
         % Extract month, day, and time parts from the filename
@@ -283,11 +303,37 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
             plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
             hold on;
             plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
-            plot(obs_1, '-')
+            plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);            
             legend show;
         end
 
-        % Cropping the longer vector to match wave lengths-==========-8
+        if only_obs
+            bound = 10000/meters_per_pix;
+            yPrev_filter = y_prev >= (159-bound) & y_prev <= (159+bound);
+            yCurr_filter = y_curr >= (159-bound) & y_curr <= (159+bound);
+
+            x_prev = x_prev(yPrev_filter);
+            y_prev = y_prev(yPrev_filter);
+            x_curr = x_curr(yCurr_filter);
+            y_curr = y_curr(yCurr_filter);
+
+            % Skip iteration if any of the arrays are empty after filtering
+            if isempty(y_prev) || isempty(y_curr)
+                continue;
+            end
+
+            if verbose
+                figure;
+                plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
+                hold on;
+                plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
+                plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);
+                legend show;
+            end
+
+        end
+
+        % Cropping the longer vector to match wave lengths
         
         % Calculate y-lengths (ranges)
         yLengthPrev = max(y_prev) - min(y_prev);
@@ -318,19 +364,6 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
         % Crop the longer vector to match the range and y-max/y-min of the shorter vector
         cropped_long_y = long_y(indices);
         cropped_long_x = long_x(indices);
-        
-        if verbose
-            % Visualization for verification
-            figure;
-            plot(x_prev, y_prev, 'b-', 'DisplayName', 'Previous Wave');
-            hold on;
-            plot(x_curr, y_curr, 'g-', 'DisplayName', 'Current Wave');
-            plot(cropped_long_x, cropped_long_y, 'r--', 'DisplayName', sprintf('Adjusted %s Wave', chosen_name));
-            legend show;
-            xlabel('X Axis');
-            ylabel('Y Axis');
-            title(sprintf('Comparison of Adjusted and Original Vectors'));
-        end
 
         % Compare y-lengths and replace longer wave vector with cropped version
         if yLengthCurr > yLengthPrev
@@ -340,16 +373,31 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
             y_prev = cropped_long_y;
             x_prev = cropped_long_x;
         end
-        
+                
+        if verbose
+            % Visualization for verification
+            figure;
+            plot(x_prev, y_prev, 'b-', 'DisplayName', 'Previous Wave');
+            hold on;
+            plot(x_curr, y_curr, 'g-', 'DisplayName', 'Current Wave');
+            plot(cropped_long_x, cropped_long_y, 'r--', 'DisplayName', sprintf('Adjusted %s Wave', chosen_name));
+            plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);
+            legend show;
+            xlabel('X Axis');
+            ylabel('Y Axis');
+            title(sprintf('Comparison of Adjusted and Original Vectors'));
+        end
+
 
         %% Use to only calculate near OBS
         
         if only_obs
-            %% Filter the arrays to keep only values between 350 and 450
-           
-            obs_filter_prev = x_prev >= 350 & x_prev <= 450; 
-            obs_filter_curr = x_curr >= 350 & x_curr <= 450;
+            %% Filter the arrays to keep only values within 10 km radius from OBS
+            
+            bound = 10000/meters_per_pix;
 
+            obs_filter_prev = x_prev >= (392-bound) & x_prev <= (392+bound);
+            obs_filter_curr = x_curr >= (392-bound) & x_curr <= (392+bound);
     
             % Apply the filters
             x_prev = x_prev(obs_filter_prev);
@@ -364,11 +412,11 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
         end
         
         % Failsafe for OBS -- skip if one wave is too short
-        if length(x_prev) < 0.2*length(x_curr)
+        if length(x_prev) < 0.3*length(x_curr)
             continue
         end
 
-        if length(x_curr) < 0.2*length(x_prev)
+        if length(x_curr) < 0.3*length(x_prev)
             continue
         end
 
@@ -422,10 +470,13 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
             y1a = y_prev(calc_points(i,1) - gap);
             
             gap = 10;
-            if (calc_points(i,1) + gap)>length(x_prev)
-                gap=1; % this has to be fixed!!!!
+            if (calc_points(i,1) + gap) > length(x_prev)
+                gap = 1; % this has to be fixed!!!!
+                if (calc_points(i,1) + gap) > length(x_prev)
+                    continue;
+                end
             end
-    
+
             x2a = x_prev(calc_points(i,1) + gap);
             y2a = y_prev(calc_points(i,1) + gap);
             slope_prev(i) = (y2a - y1a) / (x2a - x1a);
@@ -493,12 +544,16 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
             v(i) = distance_m(i)/dt;
         end
         
-        % m* is the slope of the line connecting both waves
-        mean_ms(f+1) = mean(ms);
-        time(f+1) = curr_num;
-        avg_v = mean(v);
-        velocity(f+1) = avg_v;
-        velocity_error(f+1)=std(v);
+        try
+            % m* is the slope of the line connecting both waves
+            mean_ms(f+1) = mean(ms);
+            time(f+1) = curr_num;
+            avg_v = mean(v);
+            velocity(f+1) = avg_v;
+            velocity_error(f+1)=std(v);
+        catch
+            continue
+        end
 
         % Store the datetime object
         t_curr_array(f+1) = t_curr;
@@ -521,6 +576,10 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
                 if calc_points(p, 1) == 0
                     continue
                 end
+                
+                if length(fractions) > length(p)
+                    continue
+                end
 
                 plot(x_prev(calc_points(p, 1)), y_prev(calc_points(p,1)), 'bo')
                 plot(x_curr(calc_points(p, 2)), y_curr(calc_points(p,2)), 'ko')
@@ -529,6 +588,7 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
                 plot(x2(p),y2(p),'k*'); leg4 = "perp. intersect";
                 y_perp(:,p) = -(1/m1(p)) * (xvals - x1(p)) + y1(p);
                 plot(xvals,y_perp(:,p), 'r--'); leg3 = "perp. line";
+                plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);
             
             end
         end
