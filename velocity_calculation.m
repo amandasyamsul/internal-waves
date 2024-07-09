@@ -13,12 +13,26 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
 %% Read in CSV files
 
 luzon = readtable('luzon.csv');
+
+% april = readtable('aprildata.csv');
+% 
 may = readtable('maydata.csv');
-may_obs = readtable('may_obs.csv')
+% may_obs_10km = readtable('may_obs_10km.csv');
+% may_obs_10km_40 = readtable('may_obs_10km_40.csv');
+may_10km_60 = readtable('may_10km_60.csv');
+may_5km_60 = readtable('may_5km_60.csv');
+
 % june = readtable('junedata.csv');
-% june_obs = readtable('june_obs.csv');
+% june_obs_10km = readtable('june_obs.csv');
+% june_obs_5km = readtable('june_obs_5km.csv');
+% june_obs_2km = readtable('june_obs_2km.csv');
+% 
 % july = readtable('julydata.csv');
-% july_obs = readtable('july_obs.csv');
+% july_obs_10km = readtable('july_obs.csv');
+% july_obs_8km = readtable('july_obs_8km.csv');
+% july_obs_5km = readtable('july_obs_5km.csv');
+% july_obs_2km = readtable('july_obs_2km.csv');
+% 
 % august = readtable('augdata.csv');
 
 % [l_time, l_vel, d_time, d_height] = tide_2019_2020();
@@ -35,74 +49,156 @@ may_obs = readtable('may_obs.csv')
 
 %%
 
-% [velocity,velocity_error,mean_ms,t_curr_array] = calculate_velocity('May2020', true, true);
+[velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calculate_velocity('May2020', false, false, 5000, 0.6);
+
+% Saving data to table & SVG 
+
+% Define column names
+col_names = {'time', 'velocity', 'velocity_std', 'back_azimuth', 'back_azimuth_std'};
+T = table(t_curr_array', velocity', velocity_std', back_azimuth', back_azimuth_std', 'VariableNames', col_names);
+
+writetable(T,'maydata.csv')
+
+%% Plots!
+close all; 
+time_x = [datetime(2020, 5, 3, 1, 0, 0), datetime(2020, 5, 30, 7, 0, 0)];
 
 %%
 
-% Calculate the slope angle in degrees
-ms_degree = atand(mean_ms);
-% Convert the slope angle to azimuth
-% Assume north is 0 degrees, east is 90 degrees, etc.
-if ms_degree >= 0
-    back_azimuth = 90 - ms_degree;
-    azimuth = back_azimuth + 180;
-else
-    back_azimuth = 90 + abs(ms_degree);
-    azimuth = back_azimuth + 180;
-end
-
-% % Ensure azimuth is within 0 to 360 degrees
-% if azimuth < 0
-%     azimuth = azimuth + 360;
-% elseif azimuth >= 360
-%     azimuth = azimuth - 360;
-% end
-
-% Create a scatter plot with azimuths
-figure(1);
-scatter(t_curr_array, back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b');
-grid on;
-
-% Label the axes
-title('Direction of wave source')
-xlabel('Time');
-ylabel('Back azimuth (degrees)');
-
-%% Saving data to table & SVG
-
-% Define column names
-col_names = {'time', 'velocity', 'std_dev', 'azimuth', 'back_azimuth'};
-T = table(t_curr_array', velocity', velocity_error', azimuth', back_azimuth', 'VariableNames', col_names);
-
-writetable(T,'may_obs.csv')
-
-%% Plots!
-
-figure(2)
-
-time_x = [datetime(2020, 5, 7, 3, 0, 0), datetime(2020, 5, 7, 7, 0, 0)];
-
-% Plot 1: Internal wave velocity
-subplot(2, 1, 1); % First subplot in a 2x2 grid
-plot_velocity(may_obs)
-xlim(time_x);
-title('Internal wave velocities in May 2020');
-
+figure(1)
 % Plot 2: Tidal velocity
-% Create a logical index for timeframe of choice
-luzon.l_dates = luzon.l_dates + hours(50); % timelag for waves to propagate from luzon strait
-timeframe = month(luzon.l_dates) == 5;
-
-subplot(2, 1, 2); % Second subplot in a 2x2 grid
-plot(luzon.l_dates(timeframe), luzon.l_vel(timeframe))
-xlim(time_x);
-title('Tidal velocities in the Luzon Strait in May 2020 (50 hour lag)');
+subplot(2, 1, 1); % Second subplot in a 2x2 grid
+plot(luzon.l_dates, luzon.l_vel)
+xlim(time_x - hours(44.5));
+title('Tidal velocities in the Luzon Strait in May 2020 (44.5 hour lag)');
 xlabel('time');
 ylabel('velocity (m/s)');
 
-%% Comparing to manually measured values
+% Plot 1: Internal wave velocity
+subplot(2, 1, 2); % First subplot in a 2x2 grid
+% plot_avg_velocity(may_obs_10km, '10 km E-W of OBS — cropped waves out of bounds')
+plot_avg_velocity(may, 'total distance')
+plot_avg_velocity(may_10km_60, '10 km E-W of OBS - waves 60% in bounds')
+plot_avg_velocity(may_5km_60, '5 km E-W of OBS - waves 60% in bounds')
+xlim(time_x);
+title('Internal wave velocities in May 2020');
 
-function plot_avg_velocity(data)
+%%
+% Plot velocities with different OBS constraints
+figure()
+hold on;
+% plot_avg_velocity(may, 'total distance')
+plot_avg_velocity(may_obs_5km_2, '5 km from OBS - entirely removing waves that are partially out of bounds')
+% plot_avg_velocity(july_obs_5km, '5 km from OBS - cropping sections of waves out of bounds')
+xlim(time_x);
+title('Internal wave velocities in May 2020');
+
+%%
+close all; 
+
+figure(2);
+hold on
+plot_azimuth(may, 'total distance')
+plot_azimuth(may_10km_60, '10 km E-W of OBS - waves 60% in bounds')
+plot_azimuth(may_5km_60, 'km km E-W of OBS - waves 60% in bounds')
+
+
+% figure(3);
+% plot_azimuth2(may_10km_60)
+
+%% Daily velocity plots
+
+% maydays = [5, 6, 7, 9, 10, 12, 26, 27, 29];
+% junedays = [4 11 19 20 21 22 24 25 27 28];
+% julydays = [6 11 12 13 27];
+
+julydays = [13 27];
+
+figure(4)
+
+for p = 1:length(julydays)
+    time_x = [datetime(2020, 7, julydays(p), 1, 0, 0), datetime(2020, 7, julydays(p), 11, 0, 0)];
+    
+    % Plot 1: Tidal velocity
+    subplot(length(julydays)*2, 1, 2*p-1); % Odd index for tidal velocity
+    plot(luzon.l_dates, luzon.l_vel)
+    xlim(time_x - hours(44.5));
+    % title(['Tidal velocities in the Luzon Strait in May 2020 (44.5 hour lag) - Day ', num2str(maydays(p))]);
+    % xlabel('time');
+    % ylabel('velocity (m/s)');
+    
+    % Plot 2: Internal wave velocity
+    subplot(length(julydays)*2, 1, 2*p); % Even index for internal wave velocity
+    plot_velocity(july_obs_5km)
+    xlim(time_x);
+    % title(['Internal wave velocities in May 2020 - Day ', num2str(maydays(p))]);
+end
+
+
+%%
+function plot_azimuth2(data)
+    % Convert back azimuth to radians for polar plot
+    azimuths_rad = deg2rad(data.back_azimuth);
+    
+    % Scale normalized time to desired radius range, e.g., [0, 2]
+    radius = data.velocity;
+    
+    p = polaraxes; % Create a polar axes context
+    hold on;
+
+    % Adjust the polar plot to set 0 degrees to North and clockwise direction
+    p.ThetaDir = 'clockwise';
+    p.ThetaZeroLocation = 'top';
+
+    % Create polar scatter plot with velocity as radius using scatter
+    scatter(p, azimuths_rad, radius, 30, 'k', 'filled');
+    
+    % Add a custom legend to indicate that the radius represents velocity
+    h = legend('Back azimuth',  'Location', 'west', 'Orientation', 'horizontal');
+    title(h, 'Radius = Velocity (m/s)');
+
+    % Enhance the plot
+    title('Direction of Wave Source');
+    legend show;
+    hold off;
+end
+
+
+function plot_azimuth(data, label)
+    % Create a scatter plot with azimuths
+    
+    % Convert datetime to date only (removing time part)
+    data.DateOnly = dateshift(data.time, 'start', 'day');
+
+    % Group by date and calculate mean velocity and standard deviation
+    dailyStats = groupsummary(data, 'DateOnly', {'mean', 'std'}, 'back_azimuth');
+    
+    % Extract necessary columns
+    avgTime = dailyStats.DateOnly;
+    avg_back_azimuth = dailyStats.mean_back_azimuth;
+    std_back_azimuth = dailyStats.std_back_azimuth;
+   
+    hold on
+    % Plot mean back azimuth with error bars
+    errorbar(avgTime, avg_back_azimuth, std_back_azimuth, '*-', 'LineWidth', 1, 'DisplayName', label);
+    
+    % Plot individual back azimuth values
+    % scatter(data.time, data.back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b')
+    
+    grid on;
+    
+    % Label the axes
+    title('Direction of Wave Source');
+    xlabel('Time');
+    % ylabel('Back Azimuth (degrees)');
+    
+    % Show legend
+    legend show;
+    
+    hold off;
+end
+
+function plot_avg_velocity(data, caption)
 
     % Convert datetime to date only (removing time part)
     data.DateOnly = dateshift(data.time, 'start', 'day');
@@ -116,10 +212,10 @@ function plot_avg_velocity(data)
     stdDevVelocity = dailyStats.std_velocity;
 
     % Plotting
-    errorbar(avgTime, avgVelocity, stdDevVelocity, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
+    errorbar(avgTime, avgVelocity, stdDevVelocity, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', caption);
     hold on;
-    plot(avgTime, avgVelocity, 'r-', 'LineWidth', 1, 'DisplayName', 'trend');
-    scatter(avgTime, avgVelocity, 'ko', 'Filled','DisplayName', 'average velocity');
+    % plot(avgTime, avgVelocity, 'o-', 'LineWidth', 1, 'DisplayName', caption, 'MarkerFaceColor', 'blue');
+    % scatter(avgTime, avgVelocity, 'ko', 'Filled','DisplayName', 'average velocity');
     xlabel('Time');
     ylabel('Velocity (m/s)');
     legend show;
@@ -129,17 +225,17 @@ end
 
 function plot_velocity(data_file)
     % Plot velocity vs time with error bars
-    errorbar(data_file.time, data_file.velocity, data_file.std_dev, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
+    errorbar(data_file.time, data_file.velocity, data_file.velocity_std, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
     hold on
     plot(data_file.time, data_file.velocity,'r-','LineWidth', 1,'DisplayName', 'velocity');
-    xlabel('Time');
-    ylabel('Velocity (m/s)');
+    % xlabel('Time');
+    % ylabel('Velocity (m/s)');
     legend show;
     grid on;
     set(gca, 'FontSize', 12);
 end
 
-function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_file, verbose, only_obs)
+function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calculate_velocity(data_file, verbose, only_obs, constraint, prop)
 
     data = readtable(data_file, 'ReadVariableNames', false); 
     
@@ -298,41 +394,6 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
         x_curr = x_sorted;
         y_curr = y_sorted;
 
-        if verbose
-            figure;
-            plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
-            hold on;
-            plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
-            plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);            
-            legend show;
-        end
-
-        if only_obs
-            bound = 10000/meters_per_pix;
-            yPrev_filter = y_prev >= (159-bound) & y_prev <= (159+bound);
-            yCurr_filter = y_curr >= (159-bound) & y_curr <= (159+bound);
-
-            x_prev = x_prev(yPrev_filter);
-            y_prev = y_prev(yPrev_filter);
-            x_curr = x_curr(yCurr_filter);
-            y_curr = y_curr(yCurr_filter);
-
-            % Skip iteration if any of the arrays are empty after filtering
-            if isempty(y_prev) || isempty(y_curr)
-                continue;
-            end
-
-            if verbose
-                figure;
-                plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
-                hold on;
-                plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
-                plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);
-                legend show;
-            end
-
-        end
-
         % Cropping the longer vector to match wave lengths
         
         % Calculate y-lengths (ranges)
@@ -391,26 +452,65 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
 
         %% Use to only calculate near OBS
         
-        if only_obs
-            %% Filter the arrays to keep only values within 10 km radius from OBS
-            
-            bound = 10000/meters_per_pix;
+        % if only_obs
+        %     %% Define the boundary based on constraint and meters_per_pix
+        %     bound = constraint / meters_per_pix;
+        % 
+        %     % Filter the arrays to keep only values within the fixed W-E radius from OBS
+        %     obs_filter_prev = x_prev >= (392-bound) & x_prev <= (392+bound);
+        %     obs_filter_curr = x_curr >= (392-bound) & x_curr <= (392+bound);
+        % 
+        %     % Apply the filters
+        %     x_prev = x_prev(obs_filter_prev);
+        %     y_prev = y_prev(obs_filter_prev);
+        %     x_curr = x_curr(obs_filter_curr);
+        %     y_curr = y_curr(obs_filter_curr);
+        % 
+        %     % Skip iteration if any of the arrays are empty after filtering
+        %     if isempty(x_prev) || isempty(y_prev) || isempty(x_curr) || isempty(y_curr)
+        %         continue;
+        %     end
+        % 
+        %     if verbose
+        %         figure;
+        %         plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
+        %         hold on;
+        %         plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
+        %         plot(392, 159, 'p', 'DisplayName', 'OBS Station', 'MarkerFaceColor', 'red', 'MarkerSize', 15);
+        %         legend show;
+        %     end
+        % end
 
-            obs_filter_prev = x_prev >= (392-bound) & x_prev <= (392+bound);
-            obs_filter_curr = x_curr >= (392-bound) & x_curr <= (392+bound);
-    
-            % Apply the filters
-            x_prev = x_prev(obs_filter_prev);
-            y_prev = y_prev(obs_filter_prev);
-            x_curr = x_curr(obs_filter_curr);
-            y_curr = y_curr(obs_filter_curr);
-    
-            % Skip iteration if any of the arrays are empty after filtering
-            if isempty(x_prev) || isempty(y_prev) || isempty(x_curr) || isempty(y_curr)
-                continue;
+        if only_obs
+            %% Define the boundary based on constraint and meters_per_pix
+            bound = constraint / meters_per_pix;
+
+            %% Check the proportion of x_prev and x_curr within the bounds
+            in_bounds_prev = (x_prev >= (392-bound)) & (x_prev <= (392+bound));
+            in_bounds_curr = (x_curr >= (392-bound)) & (x_curr <= (392+bound));
+
+            % Calculate the proportion of points within the bounds
+            proportion_in_bounds_prev = sum(in_bounds_prev) / length(x_prev);
+            proportion_in_bounds_curr = sum(in_bounds_curr) / length(x_curr);
+
+            % Check if at least prop% of the points are within the bounds for both waves
+            if proportion_in_bounds_prev < prop || proportion_in_bounds_curr < prop
+                continue; % Skip iteration if less than prop% of the points are within the bounds
+            end
+
+            % At this point, we know that at least prop% of the points are within bounds
+            % so we use the entire wave without filtering
+
+            if verbose
+                figure;
+                plot(x_prev, y_prev, '-*', 'DisplayName', 'Previous Wave');
+                hold on;
+                plot(x_curr, y_curr, '-*', 'DisplayName', 'Current Wave');
+                plot(392, 159, 'p', 'DisplayName', 'OBS Station', 'MarkerFaceColor', 'red', 'MarkerSize', 15);
+                legend show;
             end
         end
-        
+
         % Failsafe for OBS -- skip if one wave is too short
         if length(x_prev) < 0.3*length(x_curr)
             continue
@@ -546,11 +646,38 @@ function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_
         
         try
             % m* is the slope of the line connecting both waves
-            mean_ms(f+1) = mean(ms);
-            time(f+1) = curr_num;
-            avg_v = mean(v);
-            velocity(f+1) = avg_v;
-            velocity_error(f+1)=std(v);
+
+            % Calculate the slope angle in degrees
+
+            % Calculate the slope angle in degrees
+            mean_ms = mean(ms);
+            % ms_degree = atand(mean_ms);
+            % % Convert the slope angle to azimuth
+            % % Assume north is 0 degrees, east is 90 degrees, etc.
+            % if ms_degree >= 0
+            %     back_az = 90 - ms_degree;
+            %     azimuth = back_az + 180;
+            % else
+            %     back_az = 90 + abs(ms_degree);
+            %     azimuth = back_az + 180;
+            % end
+
+            % Assuming mean_ms is a slope value, convert it to an angle in degrees
+            ms_degree = atand(mean_ms);
+            
+            % Convert the slope angle to azimuth
+            % Assume north is 0 degrees, east is 90 degrees, south is 180 degrees, west is 270 degrees
+            if ms_degree >= 0
+                back_az = 90 + ms_degree;
+            else
+                back_az = 90 - abs(ms_degree);
+            end
+
+            back_azimuth(f+1) = mean(back_az);
+            back_azimuth_std(f+1) = std(back_az);
+            velocity(f+1) = mean(v);
+            velocity_std(f+1)=std(v);
+            % time(f+1) = curr_num;
         catch
             continue
         end
@@ -619,3 +746,28 @@ function compare(manual_velocity,auto_velocity,auto_velocity_error)
     hold off
 end
 
+function filtered_array = filter_continuous_ones(array)
+    
+    % Find the start and end indices of each contiguous segment of 1s
+    d = diff([0; array; 0]);
+    start_indices = find(d == 1);
+    end_indices = find(d == -1) - 1;
+    
+    % Calculate the length of each segment
+    segment_lengths = end_indices - start_indices + 1;
+    
+    % Find the index of the longest segment
+    [~, longest_segment_index] = max(segment_lengths);
+    
+    % Get the start and end indices of the longest segment
+    longest_segment_start = start_indices(longest_segment_index);
+    longest_segment_end = end_indices(longest_segment_index);
+    
+    % Initialize the output array with zeros
+    filtered_array = zeros(size(array));
+    
+    % Set the elements of the longest segment to 1
+    filtered_array(longest_segment_start:longest_segment_end) = 1;
+
+    filtered_array = logical(filtered_array);
+end
