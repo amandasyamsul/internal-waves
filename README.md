@@ -1,5 +1,5 @@
 # Oceanic Internal Wave velocity analysis
-Analysis of oceanic internal waves in the South China Sea using the Himawari-8 geostationary satellite operated by the Japan Meteorological Agency (JMA).
+Analysis of internal gravity waves in the South China Sea using the Himawari-8 geostationary satellite operated by the Japan Meteorological Agency (JMA).
 
 
 Descriptions:
