@@ -30,7 +30,7 @@ errorbar(comparison_data.time, comparison_data.velocity, comparison_data.std_dev
 xlabel('time (seconds)');
 ylabel('velocity (m/s)');
 title('Comparison between Manually & Automatically Measured Internal Wave Velocities');
-disp(['diff. in avg. velocity = ', num2str(diff_avg), ' m/s'])
+% disp(['diff. in avg. velocity = ', num2str(diff_avg), ' m/s'])
 legend show;
 grid on;
 hold off
@@ -52,9 +52,9 @@ hold off
 % % Write the table to a CSV file
 % writetable(T, 'comparison_data.csv');
 
-[auto_velocity4,velocity_error4,mean_ms,t_curr_array4] = calculate_velocity('0704_chosen', false, false);
+[auto_velocity4,velocity_error4,mean_ms,t_curr_array4] = calculate_velocity('0713_chosen', false, false);
 auto_velocity(1) = NaN
-compare('manual0704',auto_velocity4,t_curr_array4,velocity_error4)
+compare('manual0713',auto_velocity4,t_curr_array4,velocity_error4)
 
 %%
 function [velocity,velocity_error,mean_ms,t_curr_array]=calculate_velocity(data_file, verbose, only_obs)
@@ -490,7 +490,7 @@ function compare(manual_velocity,auto_velocity,time,auto_velocity_error)
     hold on
     plot(time',manual.v, 'Marker', '*', 'DisplayName', 'manual measurements');
     errorbar(time, auto_velocity, auto_velocity_error,'Marker', '*','DisplayName', 'automatic measurements');
-    xlabel('time (seconds)');
+    xlabel('time');
     ylabel('velocity (m/s)');
     title('Comparison between Manually & Automatically Measured Internal Wave Velocities');
     disp(['diff. in avg. velocity = ', num2str(diff_avg), ' m/s'])
