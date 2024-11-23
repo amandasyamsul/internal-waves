@@ -6,6 +6,7 @@ close all; clear all; clc
 
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/loadsvg_2');
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
+addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/seismic');
 
 % setup filename file
 % !ls -1 0*svg > Filenames
@@ -13,94 +14,432 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/annotated');
 %% Read in CSV files
 
 luzon = readtable('luzon.csv');
-% 
-% april = readtable('aprildata.csv');
-% 
-may = readtable('maydata.csv');
-may_away = readtable('may_away.csv');
-may_near = readtable('may_near.csv');
+
+
+all_data_2015 = readtable('OIW_2015_data.csv');
+avg_data_2015 = readtable('avg_OIW_2015_data.csv');
+
+all_data_2016 = readtable('OIW_2016_data.csv');
+avg_data_2016 = readtable('avg_OIW_2016_data.csv');
+
+all_data_2017 = readtable('OIW_2017_data.csv');
+avg_data_2017 = readtable('avg_OIW_2017_data.csv');
+
+all_data_2018 = readtable('OIW_2018_data.csv');
+avg_data_2018 = readtable('avg_OIW_2018_data.csv');
+
+all_data_2019 = readtable('OIW_2019_data.csv');
+avg_data_2019 = readtable('avg_OIW_2019_data.csv');
+
+all_data_2020 = readtable('OIW_2020_data.csv');
+avg_data_2020 = readtable('avg_OIW_2020_data.csv');
+
+all_data_2021 = readtable('OIW_2021_data.csv');
+avg_data_2021 = readtable('avg_OIW_2021_data.csv');
+
+all_data_2022 = readtable('OIW_2022_data.csv');
+avg_data_2022 = readtable('avg_OIW_2022_data.csv');
+
+all_data_2023 = readtable('OIW_2023_data.csv');
+avg_data_2023 = readtable('avg_OIW_2023_data.csv');
+
+all_data_2024 = readtable('OIW_2024_data.csv');
+avg_data_2024 = readtable('avg_OIW_2024_data.csv');
+
+det = readtable('detections_reviewed.csv');
+
+% may_away = readtable('may_away.csv');
+% may_near = readtable('may_near.csv');
 % may_10km_60 = readtable('may_10km_60.csv');
 % may_5km_60 = readtable('may_5km_60.csv');
 % may_10km_60c = readtable('may_10km_60c.csv');
 % may_5km_60c = readtable('may_5km_60c.csv');
-% 
-% june = readtable('junedata.csv');
-% 
-% july = readtable('julydata.csv');
-% 
-% august = readtable('augdata.csv');
-% 
-% sept = readtable('septdata.csv');
 
-% [l_time, l_vel, d_time, d_height] = tide_2019_2020();
-% 
-% l_dates = datetime(l_time, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
-% d_dates = datetime(d_time, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
-% %%
-% l_vel = l_vel ./ 100; % Convert cm/s to m/s
-% luzon = table(l_dates, l_vel);
-% dongsha = table(d_dates, d_height);
-%
-% writetable(luzon,'luzon.csv')
-% writetable(dongsha, 'dongsha.csv')
 
-%%
+%% Data calculation
 
-[velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calculate_velocity('May2020', false, true, 10000, 0.6);
+[velocity,velocity_std_dev,velocity_std_err,back_azimuth,t_curr_array]=calculate_velocity('all_2015_data', false, true, 10000, 0.9);
 
 % Saving data to table & SVG 
 
 % Define column names
-col_names = {'time', 'velocity', 'velocity_std', 'back_azimuth', 'back_azimuth_std'};
-T = table(t_curr_array', velocity', velocity_std', back_azimuth', back_azimuth_std', 'VariableNames', col_names);
+col_names = {'datetime', 'velocity','velocity_std_dev', 'back_azimuth'};
+T = table(t_curr_array', velocity', velocity_std_dev', back_azimuth', 'VariableNames', col_names);
 
-writetable(T,'may_near.csv')
+writetable(T,'OIW_2015_data.csv')
 
-%% Plots!
-close all; 
-time_x = [datetime(2020, 5, 1, 1, 0, 0), datetime(2020, 5, 31, 7, 0, 0)];
+% Make table of averages
+
+% Convert the time column to date-only format
+T.date = dateshift(T.datetime, 'start', 'day');
+
+% Group the data by date
+[G, dateGroups] = findgroups(T.date);
+
+% Calculate daily statistics while ignoring NaN values
+daily_avg_velocity = splitapply(@(x) nanmean(x), T.velocity, G);
+daily_median_velocity = splitapply(@(x) nanmedian(x), T.velocity, G);
+daily_stdev_velocity = splitapply(@(x) nanstd(x), T.velocity, G);
+daily_avg_backazimuth = splitapply(@(x) nanmean(x), T.back_azimuth, G);
+daily_median_backazimuth = splitapply(@(x) nanmedian(x), T.back_azimuth, G);
+daily_stdev_backazimuth = splitapply(@(x) nanstd(x), T.back_azimuth, G);
+daily_max_backazimuth = splitapply(@(x) nanmax(x), T.back_azimuth, G);
+daily_min_backazimuth = splitapply(@(x) nanmin(x), T.back_azimuth, G);
+
+% Create a new table with the aggregated values
+averages = table(dateGroups, daily_avg_velocity, daily_median_velocity, daily_stdev_velocity, daily_avg_backazimuth, daily_median_backazimuth, daily_stdev_backazimuth, daily_max_backazimuth, daily_min_backazimuth, ...
+    'VariableNames', {'datetime', 'average_velocity','median_velocity', 'velocity_std_dev', 'average_back_azimuth', 'median_back_azimuth','back_azimuth_std_dev', 'max_ba', 'min_ba'});
+
+writetable(averages,'avg_OIW_2015_data.csv')
+
 
 %%
 
-figure(1)
-% Plot 2: Tidal velocity
-subplot(2, 1, 1); % Second subplot in a 2x2 grid
-plot(luzon.l_dates, luzon.l_vel)
-xlim(time_x - hours(44.5));
-title('Tidal velocities in the Luzon Strait in April 2020 (44.5 hour lag)');
-xlabel('time');
-ylabel('velocity (m/s)');
+avgdayofyear15=(datenum(avg_data_2015.datetime)-datenum(2015,1,1));
+avgdayofyear16=(datenum(avg_data_2016.datetime)-datenum(2016,1,1));
+avgdayofyear17=(datenum(avg_data_2017.datetime)-datenum(2017,1,1));
+avgdayofyear18=(datenum(avg_data_2018.datetime)-datenum(2018,1,1));
+avgdayofyear19=(datenum(avg_data_2019.datetime)-datenum(2019,1,1));
+avgdayofyear20=(datenum(avg_data_2020.datetime)-datenum(2020,1,1));
+avgdayofyear21=(datenum(avg_data_2021.datetime)-datenum(2021,1,1));
+avgdayofyear22=(datenum(avg_data_2022.datetime)-datenum(2022,1,1));
+avgdayofyear23=(datenum(avg_data_2023.datetime)-datenum(2023,1,1));
+avgdayofyear24=(datenum(avg_data_2024.datetime)-datenum(2024,1,1));
 
-% Plot 1: Internal wave velocity
-subplot(2, 1, 2); % First subplot in a 2x2 grid
-% plot_avg_velocity(may_obs_10km, '10 km E-W of OBS — cropped waves out of bounds')
-plot_avg_velocity(april, 'velocity')
-% plot_avg_velocity(may_10km_60c, '10 km E-W of OBS - waves 60% in bounds above Dongsha')
-xlim(time_x);
-title('Internal wave velocities in April 2020');
+dayofyear15=(datenum(all_data_2015.datetime)-datenum(2015,1,1));
+dayofyear16=(datenum(all_data_2016.datetime)-datenum(2016,1,1));
+dayofyear17=(datenum(all_data_2017.datetime)-datenum(2017,1,1));
+dayofyear18=(datenum(all_data_2018.datetime)-datenum(2018,1,1));
+dayofyear19=(datenum(all_data_2019.datetime)-datenum(2019,1,1));
+dayofyear20=(datenum(all_data_2020.datetime)-datenum(2020,1,1));
+dayofyear21=(datenum(all_data_2021.datetime)-datenum(2021,1,1));
+dayofyear22=(datenum(all_data_2022.datetime)-datenum(2022,1,1));
+dayofyear23=(datenum(all_data_2023.datetime)-datenum(2023,1,1));
+dayofyear24=(datenum(all_data_2024.datetime)-datenum(2024,1,1));
 
-%%
+start_time = 15; % 3 PM in 24-hour format
+end_time = 21 + 50/60; % 9:50 PM in decimal hours
+
+data_all = {all_data_2015, all_data_2016, all_data_2017, all_data_2018, all_data_2019, all_data_2020, all_data_2021, all_data_2022, all_data_2023, all_data_2024};
+days_all = {dayofyear15, dayofyear16, dayofyear17, dayofyear18, dayofyear19, dayofyear20, dayofyear21, dayofyear22, dayofyear23, dayofyear24};
+
+data_avg = {avg_data_2015, avg_data_2016, avg_data_2017, avg_data_2018, avg_data_2019, avg_data_2020, avg_data_2021, avg_data_2022, avg_data_2023, avg_data_2024};
+days_avg = {avgdayofyear15, avgdayofyear16, avgdayofyear17, avgdayofyear18, avgdayofyear19, avgdayofyear20, avgdayofyear21, avgdayofyear22, avgdayofyear23, avgdayofyear24};
+
+years = 2015:2024;
+
+timeofday = cell(1, length(years));
+
+for i = 1:length(years)
+    % Calculate time of day in decimal hours
+    time_of_day = hour(data_all{i}.datetime) + minute(data_all{i}.datetime) / 60;
+    
+    % Assign each year's data to a cell in the cell array
+    timeofday{i} = time_of_day;
+end
+
+
+%% Back Azimuth (2015-2024)
 
 close all;
-
-% Plot velocities with different constraints
 figure()
-hold on;
-plot_velocity(may, 'total distance')
-plot_velocity(may_away, 'waves > 42 km E away from atoll')
-plot_velocity(may_near, 'waves < 42 km E from atoll')
-xlim(time_x);
-title('Internal wave velocities in May 2020');
+colormap('autumn')
 
-%%
+years = 2015:2024;
+
+for i = 1:length(years)
+    subplot(2, 5, i)
+    errorbar( data_avg{i}.datetime,  data_avg{i}.median_back_azimuth, ...
+    data_avg{i}.back_azimuth_std_dev, 'w.', 'CapSize', 0)
+    hold on
+    scatter( data_avg{i}.datetime,  data_avg{i}.median_back_azimuth, ...
+    55, days_avg{i}, 'filled')
+    ylim([80 120])
+    xlabel('datetime');
+    ylabel('back azimuth');
+    axis ij
+    title(num2str(years(i)), FontSize=14, FontAngle = 'italic');
+    grid on
+
+    % Set axes background to dark gray
+    set(gca, 'Color', [0.1 0.1 0.1]);
+    set(gca, 'GridColor', 'w');
+    time_x = [datetime(years(i), 5, 1, 3, 0, 0), datetime(years(i), 8, 31, 10, 0, 0)];
+    xlim([time_x])
+
+    caxis([120 240])
+     
+end
+
+sgtitle('Daily medians of back azimuth in South China Sea')
+c = colorbar('Position', [0.92 0.11 0.02 0.815]);
+c.Label.String = 'Day of Year';
+c.Ticks = [120, 150, 180, 210, 240];  % Monthly ticks
+c.TickLabels = {'May', 'June', 'July', 'Aug', 'Sept'};
+
+
+%% Velocity vs Back Azimuth (day of year)
+
+close all;
+figure()
+colormap('autumn')
+
+for i = 1:length(years)
+    subplot(2, 5, i)
+
+    scatter( data_avg{i}.average_velocity,  data_avg{i}.average_back_azimuth, ...
+        55, days_avg{i}, 'filled')
+    % errorbar(data_avg{i}.average_velocity,  data_avg{i}.average_back_azimuth, ...
+    %      data_avg{i}.average_velocity,  data_avg{i}.average_back_azimuth, 'k.', 'CapSize', 0)
+    ylim([80 120])
+    xlabel('velocity');
+    ylabel('back azimuth');
+    axis ij
+    title(num2str(years(i)), FontSize=14, FontAngle = 'italic');
+    grid on
+    % % Set figure background to black
+    % set(gcf, 'Color', 'k');
+    % 
+    % Set axes background to dark gray
+    set(gca, 'Color', [0.1 0.1 0.1]);
+    % 
+    % Set grid and text colors to white for visibility
+    % set(gca, 'XColor', 'w', 'YColor', 'w', 'GridColor', 'w');
+    set(gca, 'GridColor', 'w');
+end
+
+% sgtitle('Daily medians of internal wave velocity against back azimuth in South China Sea')
+
+
+% Set the color axis to ensure full coverage of tick labels
+caxis([120 240])
+
+% Add a single colorbar at the far right
+c = colorbar('Position', [0.92 0.11 0.02 0.815]); 
+c.Label.String = 'Day of Year';
+c.Ticks = [120, 150, 180, 210, 240];  % Monthly ticks
+c.TickLabels = {'May', 'June', 'July', 'Aug', 'Sept'};
+% c.Label.Color = 'w';  % Set colorbar label text to white
+% c.Color = 'w';        % Set colorbar tick labels to white
+% 
+
+
+%% Velocity vs Back Azimuth (time of day)
+
+close all;
+figure()
+colormap('hot')
+
+for i = 1:length(years)
+    subplot(3, 3, i)
+    timeofday_thisyear=timeofday{i};
+    III=(timeofday_thisyear>4)&(timeofday_thisyear<6);
+
+    scatter( data_all{i}.velocity(III),  data_all{i}.back_azimuth(III), 55, days_all{i}(III), 'filled')
+    ylim([80 120])
+    xlabel('velocity');
+    ylabel('back azimuth');
+    axis ij
+    title(num2str(years(i)), FontSize=14, FontAngle = 'italic');
+    grid on
+end
+
+sgtitle('Daily medians of internal wave velocity against back azimuth in South China Sea')
+
+% Set the color axis to ensure full coverage of tick labels
+% caxis([120 240])
+
+c = colorbar('Position', [0.92 0.11 0.02 0.815]); 
+c.Label.String = 'time of day';
+c.Ticks = [4, 5, 6, 7, 8, 9];  % Monthly ticks
+c.TickLabels = {'4 pm', '5 pm', '6 pm', '7 pm', '8 pm', '9 pm'};
+
+
+%% Running average (Back azimuth over time)
 close all; 
 
-figure(2);
-hold on
-plot_azimuth(sept, 'total distance')
+num_points = 7;
+h = ones(1, num_points)/ num_points;
 
-figure(3);
-plot_azimuth2(sept)
+figure()
+
+for i = 1:length(years)
+
+    subplot(3, 3, i)
+
+    x = data_avg{i}.median_back_azimuth;
+    t = data_avg{i}.datetime;
+
+    y = conv(h, x);
+    y = y(1: length(t));
+    % y = y( ( ceil(num_points/2) : length(y)- floor(num_points/2) ) );
+    std = data_avg{i}.back_azimuth_std_dev;
+
+    plot(t, x, 'b', 'LineWidth', 1)
+    hold on
+    errorbar(t, x, std, std, 'k.', 'CapSize', 0)
+    plot(t, y, 'ro-', 'LineWidth', 1)
+    xlim([t(num_points), t(end)])
+    axis ij
+    grid on
+    legend('median', 'std. deviation', '7-pt running average')
+    xlabel('time')
+    ylabel('back azimuth')
+    title(num2str(years(i)), FontSize=14, FontAngle = 'italic');
+
+end
+
+%% All data on one same axis (colored by day of year)
+
+figure(6)
+
+for i = 1:length(years)
+    scatter(data_all{i}.velocity, data_all{i}.back_azimuth, 40, days_all{i} , 'Filled')
+    hold on
+end
+
+c = colorbar('Position', [0.92 0.11 0.02 0.815]); 
+c.Label.String = 'Day of Year';
+c.Ticks = [120, 150, 180, 210, 240];  % Monthly ticks
+c.TickLabels = {'May', 'June', 'July', 'Aug', 'Sept'};
+
+% Uncomment if coloring by time of day
+% c = colorbar('Position', [0.92 0.11 0.02 0.815]); 
+% c.Label.String = 'time of day';
+% c.Ticks = [4, 5, 6, 7, 8, 9];  % Monthly ticks
+% c.TickLabels = {'4 pm', '5 pm', '6 pm', '7 pm', '8 pm', '9 pm'};
+
+title('Oceanic Internal Wave Velocity vs Back Azimuth 2015-2023')
+grid on
+ylim([80 120])
+xlabel('velocity');
+ylabel('back azimuth');
+
+%% Plot velocities with different constraints
+close all;
+
+% figure()
+% hold on;
+% plot_velocity(may, 'total distance')
+% plot_velocity(may_away, 'waves > 42 km E away from atoll')
+% plot_velocity(may_near, 'waves < 42 km E from atoll')
+% xlim(time_x);
+% title('Internal wave velocities in May 2020');
+
+%% Direction of wave source plots
+
+close all; 
+
+figure(10)
+
+time_x = [datetime(2019, 4, 15, 3, 0, 0), datetime(2019, 9, 15, 10, 0, 0)];
+subplot(4, 2, 1)
+plot_azimuth(all_data_2019, 'Direction of Wave Source', '2019')
+hold on
+plot(avg_data_2019.datetime, avg_data_2019.average_back_azimuth, 'LineWidth',2)
+xlim(time_x);
+ylim([80,120])
+
+time_x = [datetime(2020, 4, 15, 3, 0, 0), datetime(2020, 9, 15, 10, 0, 0)];
+subplot(4, 2, 2)
+plot_azimuth(all_data_2020, 'Direction of Wave Source', '2020')
+hold on
+plot(avg_data_2020.datetime, avg_data_2020.average_back_azimuth, 'LineWidth',2)
+xlim(time_x);
+ylim([80,120])
+
+time_x = [datetime(2021, 4, 15, 3, 0, 0), datetime(2021, 9, 15, 10, 0, 0)];
+subplot(4, 2, 3)
+plot_azimuth(all_data_2021, 'Direction of Wave Source', '2021')
+hold on
+plot(avg_data_2021.datetime, avg_data_2021.average_back_azimuth, 'LineWidth',2)
+xlim(time_x);
+ylim([80,120])
+
+time_x = [datetime(2022, 4, 15, 3, 0, 0), datetime(2022, 9, 15, 10, 0, 0)];
+subplot(4, 2, 4)
+plot_azimuth(all_data_2022, 'Direction of Wave Source', '2022')
+hold on
+plot(avg_data_2022.datetime, avg_data_2022.average_back_azimuth, 'LineWidth',2)
+xlim(time_x);
+ylim([80,120])
+
+time_x = [datetime(2023, 4, 15, 3, 0, 0), datetime(2023, 9, 15, 10, 0, 0)];
+subplot(4, 2, 5)
+plot_azimuth(all_data_2023, 'Direction of Wave Source', '2022')
+hold on
+% plot(avg_data_2022.datetime, avg_data_2022.average_back_azimuth, 'LineWidth',2)
+xlim(time_x);
+ylim([80,120])
+
+
+%% Individual year BA circle plots
+close all;
+
+figure()
+plot_azimuth2(all_data_2020, 'Direction of wave source',  'May to September 2020')
+
+figure()
+plot_azimuth2(all_data_2019, 'Direction of wave source',  'May to September 2019')
+
+%% Combined BA circle plot
+close all;
+
+figure()
+% Convert back azimuth to radians for polar plot
+azimuths_rad1 = deg2rad(all_data_2019.back_azimuth);
+azimuths_rad2 = deg2rad(all_data_2020.back_azimuth);
+azimuths_rad3 = deg2rad(all_data_2021.back_azimuth);
+
+% Scale normalized time to desired radius range
+radius1 = all_data_2019.velocity;
+radius2 = all_data_2020.velocity;
+radius3 = all_data_2021.velocity;
+
+p = polaraxes; % Create a polar axes context
+hold on;
+
+% Adjust the polar plot to set 0 degrees to North and clockwise direction
+p.ThetaDir = 'clockwise';
+p.ThetaZeroLocation = 'top';
+
+% Create polar scatter plot with velocity as radius using scatter
+scatter(p, azimuths_rad1, radius1, 30, 'filled', 'DisplayName', '2019');
+hold on
+scatter(p, azimuths_rad2, radius2, 30, 'filled', 'DisplayName', '2020');
+scatter(p, azimuths_rad3, radius3, 30, 'filled', 'DisplayName', '2021');
+
+% Add a custom legend to indicate that the radius represents velocity
+% h = legend('Back azimuth',  'Location', 'west', 'Orientation', 'horizontal');
+% h2 = legend('Back azimuth',  'Location', 'west', 'Orientation', 'horizontal');
+% 
+% title(h, 'Radius = Velocity (m/s)');
+% title(h2, 'Radius = Velocity (m/s)');
+
+% Enhance the plot
+title('Direction of wave source',  'April-Sept 2019-2021', FontSize=14, FontAngle = 'italic');
+legend show;
+hold off;
+
+%% Only run this if OBS data was downloaded
+% time_x = [datetime(2020, 5, 1, 3, 0, 0), datetime(2020, 7, 31, 10, 0, 0)];
+% time_x = [datetime(2020, 7, 15, 3, 0, 0), datetime(2020, 8, 15, 10, 0, 0)];
+% 
+% figure;
+% subplot(2, 1, 1);
+% plot_azimuth(all_data, 'total distance')
+% xlim(time_x);
+% grid on;
+% subplot(2, 1, 2);
+% plot(hh1_mt_filtered, hh1_filtered_detrended, 'DisplayName', 'HH1 Filtered');
+% plot(hh2_mt_filtered, hh2_filtered_detrended, 'DisplayName', 'HH2 Filtered');
+% plot(hhz_mt_filtered, hhz_filtered_detrended, 'DisplayName', 'HHZ Filtered');
+% title('Filtered Data');
+% xlabel('Time');
+% ylabel('Amplitude');
+% xlim(time_x);
+% legend;
+% grid on;
 
 %% Daily velocity plots
 
@@ -125,69 +464,61 @@ for p = 1:length(julydays)
     
     % Plot 2: Internal wave velocity
     subplot(length(julydays)*2, 1, 2*p); % Even index for internal wave velocity
-    plot_velocity(july_obs_5km)
+    plot_velocity(all_data, 'July 2020')
     xlim(time_x);
     % title(['Internal wave velocities in May 2020 - Day ', num2str(maydays(p))]);
 end
 
-%% Sensitivity tests
+%%
 
-data = may_5km_60;
 
-data.DateOnly = dateshift(data.time, 'start', 'day');
-
-% Group by date and calculate mean velocity and standard deviation
-dailyStats = groupsummary(data, 'DateOnly', {'mean', 'std'}, 'velocity');
-
-% Extract necessary columns
-avgTime3 = dailyStats.DateOnly;
-avgVelocity3 = dailyStats.mean_velocity;
+% % Adding type to 2020 data
+% 
+% all_data_2020.type = repmat("Unknown", height(all_data_2020), 1);
+% 
+% % Loop through each row in all_data_2020
+% for i = 1:height(all_data_2020)
+%     time_window = abs(det.DetectionTime - all_data_2020.datetime(i)) <= hours(2);
+% 
+%     % If a match is found, use the first matched 'Type'
+%     if any(time_window)
+%         all_data_2020.type(i) = det.Type(find(time_window, 1));
+%     end
+% end
+% 
+% dayofyear20=(datenum(all_data_2020.datetime)-datenum(2020,1,1));
+% 
+% figure()
+% hold on
+% 
+% % Separate data by type
+% typeA = all_data_2020.type == "A";
+% typeA2 = all_data_2020.type == "A2";
+% typeUnknown = all_data_2020.type == "Unknown"; 
+% 
+% % Plot each type with a different marker shape
+% scatter(all_data_2020.velocity(typeA), all_data_2020.back_azimuth(typeA), 50, dayofyear20(typeA), 'o', 'filled');
+% scatter(all_data_2020.velocity(typeA2), all_data_2020.back_azimuth(typeA2), 70, dayofyear20(typeA2), 's');
+% % scatter(all_data_2020.velocity(typeUnknown), all_data_2020.back_azimuth(typeUnknown), 30, dayofyear20(typeUnknown), '^', 'filled');
+% 
+% % Set axis limits, labels, and colorbar
+% ylim([80 120])
+% colorbar()
+% xlabel('velocity');
+% ylabel('back azimuth');
+% axis ij
+% title('Velocity & direction of wave source',  'May-Sept 2020', FontSize=14, FontAngle = 'italic');
+% legend('A', 'A2', 'Unknown')
+% 
+% c = colorbar();
+% c.Label.String = 'Day of Year';
+% c.Ticks = [120, 150, 180, 210, 240]; % Roughly monthly ticks
+% c.TickLabels = {'May', 'June', 'July', 'Aug', 'Sept'};
+% 
+% hold off
 
 %%
-clc
-close all
-
-data1 = avgVelocity1;
-data2 = avgVelocity3;
-
-% Find common datetime values
-[common_times, idx1, idx2] = intersect(avgTime1, avgTime3);
-
-% Extract matched data based on common times
-matched_data1 = data1(idx1);
-matched_data2 = data2(idx2);
-
-% F-test for variance
-[h_var, p_var] = vartest2(matched_data1, matched_data2);
-
-% t-test for means
-[h_mean, p_mean] = ttest2(matched_data1, matched_data2);
-
-% Bland-Altman Plot
-mean_data = (matched_data1 + matched_data2) / 2;
-diff_data = matched_data1 - matched_data2;
-mean_diff = mean(diff_data);
-std_diff = std(diff_data);
-
-figure;
-scatter(mean_data, diff_data, 'o', 'Filled');
-xlabel('Mean of Two Methods');
-ylabel('Difference of Two Methods');
-title('Bland-Altman Plot');
-hold on;
-yline(mean_diff, 'r-', 'LineWidth', 2, 'DisplayName', 'Mean Difference');
-yline(mean_diff + 1.96 * std_diff, 'r--', 'LineWidth', 2, 'DisplayName', 'Mean + 1.96 SD');
-yline(mean_diff - 1.96 * std_diff, 'r--', 'LineWidth', 2, 'DisplayName', 'Mean - 1.96 SD');
-legend('Data Points', 'Mean Difference', 'Mean + 1.96 SD', 'Mean - 1.96 SD');
-grid on;
-hold off;
-
-% Display results
-fprintf('P-value from F-test comparing variances: %f\n', p_var);
-fprintf('P-value from t-test comparing means: %f\n', p_mean);
-
-%%
-function plot_azimuth2(data)
+function plot_azimuth2(data,label, subtitle)
     % Convert back azimuth to radians for polar plot
     azimuths_rad = deg2rad(data.back_azimuth);
     
@@ -202,46 +533,34 @@ function plot_azimuth2(data)
     p.ThetaZeroLocation = 'top';
 
     % Create polar scatter plot with velocity as radius using scatter
-    scatter(p, azimuths_rad, radius, 30, 'k', 'filled');
+    scatter(p, azimuths_rad, radius, 30, 'filled');
     
     % Add a custom legend to indicate that the radius represents velocity
     h = legend('Back azimuth',  'Location', 'west', 'Orientation', 'horizontal');
     title(h, 'Radius = Velocity (m/s)');
 
     % Enhance the plot
-    title('Direction of Wave Source');
+    title(label, subtitle, FontSize=14, FontAngle = 'italic');
     legend show;
     hold off;
 end
 
 
-function plot_azimuth(data, label)
-    % Create a scatter plot with azimuths
-    
-    % Convert datetime to date only (removing time part)
-    data.DateOnly = dateshift(data.time, 'start', 'day');
-
-    % Group by date and calculate mean velocity and standard deviation
-    dailyStats = groupsummary(data, 'DateOnly', {'mean', 'std'}, 'back_azimuth');
-    
-    % Extract necessary columns
-    avgTime = dailyStats.DateOnly;
-    avg_back_azimuth = dailyStats.mean_back_azimuth;
-    std_back_azimuth = dailyStats.std_back_azimuth;
+function plot_azimuth(data, label, subtitle)
    
-    hold on
     % Plot mean back azimuth with error bars
-    errorbar(avgTime, avg_back_azimuth, std_back_azimuth, 'r-', 'LineWidth', 1, 'DisplayName', label);
+    % errorbar(datetime, back_azimuth, std_deback_azimuth, 'r-', 'LineWidth', 1, 'DisplayName', label);
     
     % Plot individual back azimuth values
-    scatter(data.time, data.back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b')
+    scatter(data.datetime, data.back_azimuth, 20, 'filled', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'b')
     
     grid on;
     
     % Label the axes
-    title('Direction of Wave Source');
+    title(label, subtitle, FontSize=14, FontAngle = 'italic');
+    
     xlabel('Time');
-    % ylabel('Back Azimuth (degrees)');
+    ylabel('Back Azimuth (degrees)');
     
     % Show legend
     % legend show;
@@ -251,34 +570,22 @@ end
 
 function plot_avg_velocity(data, caption)
 
-    % Convert datetime to date only (removing time part)
-    data.DateOnly = dateshift(data.time, 'start', 'day');
-
-    % Group by date and calculate mean velocity and standard deviation
-    dailyStats = groupsummary(data, 'DateOnly', {'mean', 'std'}, 'velocity');
-    
-    % Extract necessary columns
-    avgTime = dailyStats.DateOnly;
-    avgVelocity = dailyStats.mean_velocity;
-    stdDevVelocity = dailyStats.std_velocity;
-
-    % Plotting
-    errorbar(avgTime, avgVelocity, stdDevVelocity, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', caption);
-    hold on;
-    % plot(avgTime, avgVelocity, 'o-', 'LineWidth', 1, 'DisplayName', caption, 'MarkerFaceColor', 'blue');
-    % scatter(avgTime, avgVelocity, 'ko', 'Filled','DisplayName', 'average velocity');
+    % Plot velocity vs time with error bars
+    % errorbar(data.datetime, data.average_velocity, data.velocity_std_dev, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'standard deviation');
+    % scatter(data.datetime, data.average_velocity, 'ro', 'Filled')
+    hold on
+    plot(data.datetime, data.average_velocity,'-o','LineWidth', 1,'DisplayName', caption);
     xlabel('Time');
     ylabel('Velocity (m/s)');
-    legend show;
     grid on;
     set(gca, 'FontSize', 12);
 end
 
 function plot_velocity(data, caption)
     % Plot velocity vs time with error bars
-    errorbar(data.time, data.velocity, data.velocity_std, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'error bars');
+    errorbar(data.datetime, data.velocity, data.velocity_std_err, 'MarkerSize', 4, 'LineWidth', 1, 'DisplayName', 'standard error');
     hold on
-    plot(data.time, data.velocity,'-','LineWidth', 1,'DisplayName', caption);
+    plot(data.datetime, data.velocity,'-','LineWidth', 1,'DisplayName', caption);
     xlabel('Time');
     ylabel('Velocity (m/s)');
     legend show;
@@ -286,7 +593,7 @@ function plot_velocity(data, caption)
     set(gca, 'FontSize', 12);
 end
 
-function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calculate_velocity(data_file, verbose, only_obs, constraint, prop)
+function [velocity,velocity_std_dev,velocity_std_err,back_azimuth,t_curr_array]=calculate_velocity(data_file, verbose, only_obs, constraint, prop)
 
     data = readtable(data_file, 'ReadVariableNames', false); 
     
@@ -296,8 +603,18 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
         file1 = data_array{f};
         file2 = data_array{f+1};
     
-        prev = loadsvg(file1,1,1);
-        curr = loadsvg(file2,1,1);
+        try
+            prev = loadsvg(file1,1,1);
+        catch
+            continue; % Skip to the next iteration if file1 causes an error
+        end
+        
+        try
+            curr = loadsvg(file2,1,1);
+        catch   
+            continue; % Skip to the next iteration if file2 causes an error
+        end
+
         obs = loadsvg('OBS.svg',1,1);
     
         % Failsafe in case there is a smaller vector in the svg that should
@@ -511,9 +828,9 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
             % in_bounds_prev = (x_prev >= (392-bound)) & (x_prev <= (392+bound));
             % in_bounds_curr = (x_curr >= (392-bound)) & (x_curr <= (392+bound));
 
-            % Away from atoll
-            in_bounds_prev = (x_prev >= 258) & (x_prev <= 377);
-            in_bounds_curr = (x_curr >= 258) & (x_curr <= 377);
+            % Cut off waves at atoll
+            in_bounds_prev = (x_prev >= 258);
+            in_bounds_curr = (x_curr >= 258);
 
             % Calculate the proportion of points within the bounds
             proportion_in_bounds_prev = sum(in_bounds_prev) / length(x_prev);
@@ -524,7 +841,7 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
                 continue; % Skip iteration if less than prop% of the points are within the bounds
             end
 
-            %% Comment out code below if using entire y-axis
+            % COMMENT OUT code below if USING entire y-axis
             % % Filter the arrays to keep only values above Dongsha (y=251)
             % obs_filter_prev = y_prev <= 251; % less than because points are flipped
             % obs_filter_curr = y_curr <= 251;
@@ -535,11 +852,11 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
             % x_curr = x_curr(obs_filter_curr);
             % y_curr = y_curr(obs_filter_curr);
 
-            % % Skip iteration if any of the arrays are empty after filtering
-            % if isempty(x_prev) || isempty(y_prev) || isempty(x_curr) || isempty(y_curr)
-            %     continue;
-            % end
-            %%
+            % Skip iteration if any of the arrays are empty after filtering
+            if isempty(x_prev) || isempty(y_prev) || isempty(x_curr) || isempty(y_curr)
+                continue;
+            end
+            %
 
             if verbose
                 figure;
@@ -686,9 +1003,7 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
         end
         
         try
-            % m* is the slope of the line connecting both waves
-
-            % Calculate the slope angle in degrees
+            % m* (ms) is the slope of the line connecting both waves
 
             % Calculate the slope angle in degrees
             mean_ms = mean(ms);
@@ -705,9 +1020,14 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
             end
 
             back_azimuth(f+1) = mean(back_az);
-            back_azimuth_std(f+1) = std(back_az);
             velocity(f+1) = mean(v);
-            velocity_std(f+1)=std(v);
+            velocity_std_dev(f+1)=std(v);
+
+            % standard error
+            n = length(v);
+            mean_velocity = mean(v);
+            velocity_std_err(f+1) = velocity_std_dev(f+1) / sqrt(n);
+
         catch
             continue
         end
@@ -722,7 +1042,6 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
         %% logic testing
         if verbose
             figure(10)
-            clf
             hold on
             
             plot(x_prev,y_prev,'b'); leg7 = "previous wave";
@@ -734,9 +1053,9 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
                     continue
                 end
                 
-                if length(fractions) > length(p)
-                    continue
-                end
+                % if length(fractions) > length(p)
+                %     continue
+                % end
 
                 plot(x_prev(calc_points(p, 1)), y_prev(calc_points(p,1)), 'bo')
                 plot(x_curr(calc_points(p, 2)), y_curr(calc_points(p,2)), 'ko')
@@ -747,8 +1066,9 @@ function [velocity,velocity_std,back_azimuth,back_azimuth_std,t_curr_array]=calc
                 plot(xvals,y_perp(:,p), 'r--'); leg3 = "perp. line";
                 plot(392,159, 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','red','MarkerSize',15);
                 plot(199, 251, 'p', 'DisplayName', 'Dongsha', 'MarkerFaceColor', 'blue', 'MarkerSize', 15);
-            
+
             end
+            
         end
 
         if verbose
