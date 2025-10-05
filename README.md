@@ -1,4 +1,5 @@
 # Decadal Analysis of Nonlinear Internal Waves in the South China Sea Using Seafloor Instrumentation and Satellite
+_Amanda Syamsul, Emily E. Brodsky, Heather R. Crume, Ethan F. Williams, Kristen A. Davis, Shiou-Ya Wang, Shu-Kun Hsu_
 
 ## Research summary
 - Ocean-bottom pressure measurements reveal variations in local sea state
