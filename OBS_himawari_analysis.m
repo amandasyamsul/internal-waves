@@ -2,7 +2,7 @@
 % March 7th, 2025
 % Analysis on Internal Wave propagation proximal to OBS
 
-% close all; clear all; clc
+close all; clear all; clc
 
 data_dir = '/Users/amandasyamsul/Documents/MATLAB/OIW';
 cd(data_dir);
@@ -16,7 +16,7 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/OTPS');
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/OTPS/chadagreene-Tide-Model-Driver-fd89bd6');
 
 filtered_waves = readtable('filtered_waves.csv');
-all_detections = readtable('all_detections4.csv');
+all_detections = readtable('all_detections5.csv');
 luzon = readtable('luzon.csv');
 
 all_data_2020 = readtable('OIW_2020_data.csv');
@@ -24,30 +24,27 @@ OBS_latband_data_2020 = readtable('IW_OBS_latband_2020.csv');
 avglat = readtable('avg_OBS_latband_data_2020.csv');
 OBS_data_2020 = readtable('IW_OBS_2020.csv'); % square around OBS
 
-QC_OBS_data_2020 = readtable('QC_IW_OBS_2020.csv');
-QC_OBS_latband_data_2020 = readtable('QC_IW_OBS_latband_2020.csv');
+% QC_OBS_data_2020 = readtable('QC_IW_OBS_2020.csv');
+% QC_OBS_latband_data_2020 = readtable('QC_IW_OBS_latband_2020.csv');
 
 OBS_latband_data_2020_adjusted = readtable('OBS_latband_2020_adjusted.csv');
 fs = 13;
 
-% Defining datasets
-
 % Choose which datasets to use for this analysis
 square_around_OBS = OBS_data_2020;
 latband_across_OBS = OBS_latband_data_2020_adjusted;
+
 dataset = latband_across_OBS;
-
-
 plot_year = 2020;
 obs_coords = [21.00116 117.40267];
 
 % Define geographical bounds (longitude and latitude)
-lon1 = 116.2; lon2 = 117.7;  % Longitude range of the study area
-lat1 = 20.0; lat2 = 21.5;    % Latitude range of the study area
+lon1 = 116.2; lon2 = 117.7;  
+lat1 = 20.0; lat2 = 21.5;   
 
 % Define x-y coordinate system bounds (based on satellite image pixels)
-x_min = 0; x_max = 500;      % X-coordinates in image space
-y_min = -400; y_max = 0;     % Y-coordinates in image space
+x_min = 0; x_max = 500;      % X-coord in image space
+y_min = -400; y_max = 0;     % Y-coord in image space
 
 % Computte the range of coordinates
 image_width = x_max - x_min;    % Total width of the image in x-coordinates
@@ -70,25 +67,33 @@ lat_idx = lat >= 21.0012 & lat <= 21.1012;
 bathymetry_latband = bathymetry(lat_idx, :);
 
 % Now compute the average along latitude dimension (rows)
-avg_depth_along_lon = mean(bathymetry_latband, 1, 'omitnan'); 
+avg_depth_along_lon = mean(bathymetry, 1, 'omitnan'); 
+avg_depth_along_lon_latband = mean(bathymetry_latband, 1, 'omitnan'); 
 
-% Plot average depth versus longitude
-% figure();
-% plot(lon, avg_depth_along_lon, 'LineWidth', 2);
-% xline(obs_coords(2), 'g-', 'LineWidth',2)
-% xline(117.0792445, 'k-', 'LineWidth',2)
-% legend('depth', 'OBS', 'Dongsha')
-% xlabel('Longitude', 'FontSize', fs)
-% ylabel('Average depth (m)', 'FontSize', fs)
+% alldet_small = all_detections(:, {'crest_time','crests', 'trough_time', 'troughs', 'period'});  
+% writetable(alldet_small, 'OBP_measurements.csv');
+
+%% Manuscript Figure 2b: Plot average depth versus longitude
+close all;
+
+figure();
+plot(lon, avg_depth_along_lon_latband, 'LineWidth', 2);
+hold on
+plot(lon, avg_depth_along_lon, 'LineWidth', 2);
+xline(obs_coords(2), 'LineWidth',2)
+xline(117.0792445, 'k--', 'LineWidth',2)
+legend('Latitude 21.0012\circN to 21.1012\circN','Latitude 20.0\circN to 21.5\circN', 'OBP', 'Cutoff longitude')
+xlabel('Longitude', 'FontSize', fs)
+ylabel('Average depth (m)', 'FontSize', fs)
 % title('Average Depth Along Longitude', 'FontSize', fs, 'FontAngle', 'italic');
-% grid on;
-%% T and A over time
+grid on;
+
+%% Manuscript Figure 4 a,b: T and A over time
 close all;
 obs_coords = [21.00116 117.40267]; % 21N 117E 
 tide_model = 'TPXO9_atlas_v5.nc';
 lat = obs_coords(1);
 lon = obs_coords(2);
-
 figure()
 
 ax1 = subplot(2,1,1); hold on
@@ -109,7 +114,7 @@ for k = 1:numel(www)
 end
 
 grid on
-ylabel('Period (minutes)')
+% ylabel('Period (minutes)')
 legend('Location','northeast')
 
 ax2 = subplot(2,1,2); hold on
@@ -124,17 +129,13 @@ for k = 1:numel(www)
 end
 
 grid on
-ylabel('Amplitude (psi)')
+% ylabel('Amplitude (psi)')
 legend('Location','northeast')
 
 linkaxes([ax1 ax2], 'x')
 
-
-%% speed vs T
-
-
-%% T vs A
-close all;
+%% Manuscript Figure 5: T vs A
+close all;clc;
 
 data_to_bin = all_detections.period;
 ampli = all_detections.amps;
@@ -147,39 +148,63 @@ edgesT = startT:minutes(1):endT;
 [N,~,binIdx] = histcounts(data_to_bin, edgesT);
 
 amps_avg = accumarray(binIdx((binIdx>0)), ampli((binIdx>0)), [], @mean);
-
+amps_std = accumarray(binIdx(binIdx>0), ampli(binIdx>0), [], @std);
+amps_count = accumarray(binIdx(binIdx>0), 1, [], @sum);
+amps_sem = amps_std ./ sqrt(amps_count);  % standard error
 
 binDates = edgesT(1:end-1)';  % start of each bin
 
 Ts = minutes(edgesT(1:end-1));
 
-
 figure()
-loglog(Ts, amps_avg, 'b-', 'LineWidth',2)
-xlabel('Period (minutes)')
-ylabel('Amplitude (psi)')
-grid on
-hold on
-p = polyfit(log10(Ts), log10(amps_avg), 1);
-xfit = linspace(min(Ts), max(Ts), 100);
-yfit = 10.^(polyval(p, log10(xfit)));
-loglog(xfit, yfit, 'r--','LineWidth',2)
-
-
 % unbinned version
 Tvals = minutes(data_to_bin);
 Avals = ampli;
 % Fit power law: log A ~ alpha log T + const
 % p_unbin = polyfit(log10(Tvals), log10(Avals), 1);
-loglog(Tvals, Avals,'k.')
-legend('binned T vs A', 'slope = -1', 'unbinned data')
+loglog(Tvals, Avals, '.', 'Color', [0.6 0.6 0.6], 'MarkerSize', 18);
 hold on
-% xfit = logspace(log10(min(Tvals)), log10(max(Tvals)), 200);
-% yfit = 10.^(polyval(p_unbin, log10(xfit)));
-% loglog(xfit, yfit, 'r--','LineWidth',2)
-% title(sprintf('Slope = %.2f', p_unbin(1)))
+p_unbin = polyfit(log10(Tvals), log10(Avals), 1)
 
-%% Plot fortnightly cycle (with three edge sets)
+hold on
+% loglog(Ts, amps_avg, 'bo', 'MarkerFaceColor','b', 'MarkerSize',10)
+errorbar(Ts, amps_avg, amps_sem, 'bo', 'MarkerFaceColor','b', 'MarkerSize', 8, ...
+         'CapSize', 6, 'LineWidth', 2)  % error bars
+xlabel('Period (minutes)')
+ylabel('Amplitude (Pa)')
+grid on
+p = polyfit(log10(Ts), log10(amps_avg), 1)
+xfit = linspace(min(Ts), max(Ts), 100);
+yfit = 10.^(polyval(p, log10(xfit)));
+
+loglog(xfit, yfit, 'b--','LineWidth',3)
+
+% Reference line with slope -1
+hold on
+C = 10^(mean(log10(amps_avg)) + mean(log10(Ts)));  % scaling so line passes through center
+Aref = C * xfit.^(-1);  % slope = -1 in log-log space
+
+loglog(xfit, Aref, 'r--', 'LineWidth', 3)
+text(mean(xfit), C*mean(xfit)^(-1)*1.2, 'slope = -1', 'Color', 'r', 'FontSize', 12)
+
+legend('Unbinned T vs A', 'Binned T vs A','Slope = -1.34')
+
+x_unbin = log10(Tvals(:));
+y_unbin = log10(Avals(:));
+
+lm_unbin = fitlm(x_unbin, y_unbin);   % linear model
+disp(lm_unbin)
+
+x_bin = log10(Ts(:));
+y_bin = log10(amps_avg(:));
+
+lm_bin = fitlm(x_bin, y_bin);
+disp(lm_bin)
+
+text(5, 1e2, ['unbinned p-value= ' num2str(lm_unbin.Coefficients.pValue(2))])
+text(5, 60, ['binned p-value= ' num2str(lm_bin.Coefficients.pValue(2))])
+
+%% Manuscript Figure 6 a,b,c: Plot fortnightly cycle (with three edge sets)
 close all;
 addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/OTPS/chadagreene-Tide-Model-Driver-fd89bd6');
 
@@ -192,141 +217,64 @@ lon = obs_coords(2);
 t_otps = (all_detections.DetectionTime(1):hours(1):all_detections.DetectionTime(end));
 z_otps = tmd_predict(tide_model, lat, lon, t_otps, 'h');
 
-% Your 3 edge vectors (as given)
 startDate1 = min(all_detections.DetectionTime) - days(2);
 endDate1   = datetime(2020, 2, 27);
 edges1 = startDate1:days(13.66):all_detections.DetectionTime(end);
 
-% Quick visual check of edges vs data
 figure()
 ax(1) = subplot(4,1,1); hold on
-plot(t_otps, z_otps)
+plot(t_otps, z_otps, 'Color',	[0.6350, 0.0780, 0.1840])
 xline(edges1, 'k')
-grid on
 ylabel('Tidal height (m)')
 
 ax(2) = subplot(4,1,2); hold on
-scatter(all_detections.DetectionTime, minutes(all_detections.period), 12, 'filled')
+scatter(all_detections.DetectionTime, minutes(all_detections.period), 12, 'k', 'filled')
 xline(edges1, 'k')
-% xline(edges2, 'r')
-% xline(edges3, 'b')
-grid on
 ylabel('Period (mins)')
-
-
-% Compute fortnightly averages using ALL 3 edge sets
-clc;
 
 data_to_bin = minutes(all_detections.period);
 
 % Bin once using the combined edges (left-inclusive to avoid double-counting)
-[~,~,binIdx] = histcounts(all_detections.DetectionTime, edges_all);
-
+[~,~,binIdx] = histcounts(all_detections.DetectionTime, edges1);
 valid = (binIdx > 0) & ~isnan(data_to_bin);
-% Pre-size so we keep bins even if empty (as NaN)
-fortnightly_avg = accumarray(binIdx(valid), data_to_bin(valid), [numel(edges_all)-1, 1], @mean, NaN);
+fortnightly_avg = accumarray(binIdx(valid), data_to_bin(valid), [numel(edges1)-1, 1], @mean, NaN);
 
-binDates = edges_all(1:end-1)';  % start of each bin
+binDates = edges1(1:end-1)';  % start of each bin
 
 ax(3) = subplot(4,1,3); hold on
-scatter(binDates, fortnightly_avg, 28, 'filled')
+scatter(binDates, fortnightly_avg, 28, 'k', 'filled')
 plot(binDates, fortnightly_avg, '-')
 grid on
 ylabel('Average period (mins)')
 
 linkaxes(ax, 'x')
 
-%% Boxplot for month
-% Extract year-month from DetectionTime
-dt = all_detections.DetectionTime;
 
-% Format as "MMM yyyy" so Nov 2019 and Nov 2020 stay separate
-month_labels = cellstr(datestr(dt, 'mmm yyyy'));
-
-% --- Boxplot by month for Period ---
-figure()
-
-subplot(2,1,1)
-boxplot(minutes(all_detections.period), month_labels, ...
-    'Colors','k','Symbol','k+','Whisker',1.5);
-grid on
-title('Period by Month')
-ylabel('Period (minutes)')
-xlabel('Month')
-xtickangle(45)  % rotate labels for readability
-
-% --- Boxplot by month for Amplitude ---
-subplot(2,1,2)
-boxplot(all_detections.amps, month_labels, ...
-    'Colors','k','Symbol','k+','Whisker',1.5);
-grid on
-title('Amplitude by Month')
-ylabel('Amplitude (psi)')
-xlabel('Month')
-xtickangle(45)
-
-
-%% Boxplot for month velocity
-% Extract year-month from DetectionTime
-dt = avglat.datetime;
-
-% Format as "MMM yyyy" so Nov 2019 and Nov 2020 stay separate
-month_labels = cellstr(datestr(dt, 'mmm yyyy'));
-
-% --- Boxplot by month for Period ---
-figure()
-
-subplot(2,1,1)
-boxplot(avglat.average_velocity, month_labels, ...
-    'Colors','k','Symbol','k+','Whisker',1.5);
-grid on
-title('Average velocity by Month')
-ylabel('Speed (m/s)')
-xlabel('Month')
-xtickangle(45)  % rotate labels for readability
-
-% --- Boxplot by month for Amplitude ---
-subplot(2,1,2)
-boxplot(avglat.average_back_azimuth, month_labels, ...
-    'Colors','k','Symbol','k+','Whisker',1.5);
-grid on
-title('Back Azimuth by Month')
-ylabel('Back azimuth (psi)')
-xlabel('Month')
-xtickangle(45)
-%% T vs A
-figure()
-
-typeA_idx = all_detections.Type == "A";
-typeA2_idx = all_detections.Type == "A2";
-typeB_idx = all_detections.Type == "B";
-
-% subplot(3,1,1)
-scatter(all_detections.DetectionTime(typeA_idx), all_detections.period(typeA_idx), 'filled');
-grid on
-ylabel('period (mins)')
-hold on
-% xlabel('period (minutes)')
-title('period over time')
-% subplot(3,1,2)
-scatter(all_detections.DetectionTime(typeA2_idx), all_detections.period(typeA2_idx), 'filled', 'k');
-grid on
-ylabel('period (mins)')
-legend('A', 'A2')
-% xlabel('period (minutes)')
-% title('period over time (type A2)')
-% subplot(3,1,3)
-% scatter(all_detections.DetectionTime(typeB_idx), all_detections.period(typeB_idx), 'filled');
-% grid on
-% ylabel('period (mins)')
-% % xlabel('period (minutes)')
-% title('period over time (type B)')
 %% PART 1: Plot propagation speed binned by depth
-
-% 1.1 Plot average propagation speed binned by depth
+close all;
 
 fig = figure();
 subplot(1,2,1)
+hold on;
+for b = 1:length(bin_centers)
+    % Get all propagation speed values in the bin
+    velocities_in_bin = ttt_speed(bin_indices == b);
+    
+    jitter = (rand(size(velocities_in_bin)) - 0.5) * 5; % Adjust jitter magnitude as needed
+    scatter(bin_centers(b) + jitter, velocities_in_bin, 10, 'filled');
+    hold on
+end
+xline(-900, 'k--', 'LineWidth',2)
+xlabel('Depth (m)');
+ylabel('propagation speed (m/s)');
+set(gca, "XDir", "reverse")
+title('Propagation speeds binned by depth')
+subtitle('Latitude 21.0012 - 21.1012')
+ylim([0 5])
+grid on;
+hold off;
+
+subplot(1,2,2)
 
 % If only plotting specific times, define the time range
 start_date = datetime(plot_year, 5, 1); 
@@ -348,75 +296,27 @@ bin_centers = bin_edges(1:end-1) + diff(bin_edges)/2;
 avg_velocity = arrayfun(@(b) mean(data_velocity(bin_indices == b), 'omitnan'), 1:length(bin_centers));
 std_velocity = arrayfun(@(b) std(data_velocity(bin_indices == b), 'omitnan'), 1:length(bin_centers));
 
-x = bin_centers;
-y = avg_velocity;
-
-% Get rate of slowing in shallow waters (after 900 m depth) & exclude anomalous points
-valid_idx = (x>-900) & ~isnan(y) & ~isinf(y);% & (y>1) & (y<3.5);
-x_clean = x(valid_idx);
-y_clean = y(valid_idx);
-
-% Perform polyfit on cleaned data
-p = polyfit(x_clean, y_clean, 1);
-
-xline(-900, 'k--', 'LineWidth',2)
 hold on;
 errorbar(bin_centers, avg_velocity, std_velocity, 'k.', 'CapSize', 0, 'HandleVisibility', 'off');
 scatter(bin_centers, avg_velocity, 80, 'filled');
-add_reference_lines()
-
-% Perform polynomial fit
-x_fit = linspace(min(bin_centers), max(bin_centers), 100);
-y_fit = polyval(p, x_fit);  % Evaluate polynomial at x_fit
-
-% Plot the fit
-plot(x_fit, y_fit, 'r-', 'LineWidth', 1.5, 'DisplayName', 'Linear Fit');
-
+xline(-900, 'k--', 'LineWidth',2)
 % title(num2str(years(i)), 'FontSize', fs, 'FontAngle', 'italic');
-xlim([-800, -300])
+xlim([-1000, -400])
 ylim([0,5])
 grid on;
-title('Avg. speed binned by depth — Latitudinal band over OBS')
+title('Avg. propagation speeds binned by depth')
 subtitle('Latitude 21.0012 - 21.1012')
 xlabel('Depth (m)');
 ylabel('propagation speed (m/s)');
-% subtitle('Latitude 21.0012 - 21.1012, Longitude 117.3777 - 117.4777')
 
-all=axes(fig,'visible','off'); 
-all.XLabel.Visible='on';
-all.YLabel.Visible='on';
-xlabel(all, 'Depth (m)', 'FontSize', fs-2)
-ylabel(all, 'Avg. propagation speed (m/s)', 'FontSize', fs-2)
+set(gca, "XDir", "reverse")
 
-% 1.2 Plot all velocities binned by depth
-ttt = dataset(range, :);
-ttt_speed = ttt.velocity;
-
-subplot(1,2,2)
-hold on;
-for b = 1:length(bin_centers)
-    % Get all propagation speed values in the bin
-    velocities_in_bin = ttt_speed(bin_indices == b);
-    
-    % Scatter plot with jitter
-    jitter = (rand(size(velocities_in_bin)) - 0.5) * 5; % Adjust jitter magnitude as needed
-    scatter(bin_centers(b) + jitter, velocities_in_bin, 10, 'filled');
-    hold on
-end
-
-add_reference_lines()
-
-xlabel('Depth (m)');
-ylabel('propagation speed (m/s)');
-title('All velocities binned by depth — Latitudinal band over OBS')
-subtitle('Latitude 21.0012 - 21.1012')
-ylim([0 5])
-grid on;
-hold off;
-
-%% PART 2: Correlating propagation speed with amplitude & period
+%% Manuscript Figure S6: Correlating propagation speed with amplitude & period
 close all;
 clc;
+
+ttt = dataset(range, :);
+ttt_speed = ttt.velocity;
 
 ttt.amplitude = NaN(height(ttt), 1);
 ttt.period = NaN(height(ttt), 1);
@@ -427,12 +327,13 @@ matched_periods = NaN(height(ttt), 1);
 
 figure()
 subplot(1,2,1)
+add_reference_lines()
 for t = 1:length(unique_templates)
-
+% for t=16
+    
 amps_for_this_template = NaN(height(ttt), 1);
 periods_for_this_template = NaN(height(ttt), 1);
 
-% for t=16
     this_template = unique_templates(t);
     filtered_waves_by_temp = all_detections(all_detections.template == this_template, :);
 
@@ -454,8 +355,8 @@ periods_for_this_template = NaN(height(ttt), 1);
         
         end
     end
-
-    hold on;
+    
+    hold on
 
     for b = 1:length(bin_centers)
         idx = bin_indices == b;
@@ -468,21 +369,14 @@ periods_for_this_template = NaN(height(ttt), 1);
         amplitudes = amplitudes(valid);
     
         jitter = (rand(size(velocities)) - 0.5) * 5;
-        scatter(bin_centers(b) + jitter, velocities, amplitudes * 1e4/4, amplitudes, 'filled', 'MarkerFaceAlpha', 0.7);
+        scatter(bin_centers(b) + jitter, velocities, amplitudes/3, amplitudes, 'filled', 'MarkerFaceAlpha', 0.7);
     end
     
-
-    add_reference_lines()
-    % xlabel('Depth (m)');
-    % ylabel('propagation speed (m/s)');
-    % title('Propagation speed binned by depth');
-    % subtitle(sprintf('Template %d — Latitude 21.0012 - 21.1012', this_template));
-    xlim([-800 -200]);
+    xlim([-1000 -500]);
     ylim([0 5]);
     % cb = colorbar('southoutside');                 
     % cb.Label.String = 'Amplitude (psi)';
-    caxis([0 0.07]);
-    % colormap(flipud(autumn));
+    caxis([100 500]);
     colormap(brewermap([],"YlOrRd"))
     grid on;
     set(gca, 'XDir','reverse')
@@ -492,48 +386,7 @@ end
 ttt.amplitude = matched_amps;
 ttt.period = matched_periods;
 
-%% PART 3a: Correlating 5-point avg propagation speeds with amplitudes (Choose between 3a and 3b)
-% close all;
-
-window_size=5;
-% Now apply 5-point moving averages
-n = height(ttt);
-valid_len = n - window_size + 1;
-
-% Method 1
-for i = 1:valid_len
-    v_window = ttt_speed(i:i+window_size-1);
-    a_window = ttt.amplitude(i:i+window_size-1);
-    d_window = depths_at_data_lon(i:i+window_size-1);
-
-    avg_velocity(i) = nanmean(v_window);
-    avg_amplitude(i) = nanmean(a_window);
-    avg_depth(i) = nanmean(d_window);
-end
-
-% Method 2
-% avg_velocity = movmean(ttt_speed, window_size, 'Endpoints','discard');
-% avg_amplitude = movmean(ttt.amplitude, window_size, 'Endpoints','discard');
-% avg_depth = movmean(depths_at_data_lon, window_size, 'Endpoints','discard');
-% 
-% avg_velocity = avg_velocity(:);
-% avg_amplitude = avg_amplitude(:);
-% avg_depth = avg_depth(:);
-% 
-% valid_idx = ~isnan(avg_velocity) & ~isnan(avg_amplitude) & ~isnan(avg_depth);
-% avg_velocity = avg_velocity(valid_idx);
-% avg_amplitude = avg_amplitude(valid_idx);
-% avg_depth = avg_depth(valid_idx);
-
-% Bin by depth
-bin_edges = -1000:25:0;
-bin_centers = bin_edges(1:end-1) + diff(bin_edges)/2;
-[~, ~, bin_indices] = histcounts(avg_depth, bin_edges);
-
-subplot(1,2,2)
-plot_moving_averages(bin_centers,bin_indices,avg_velocity,avg_amplitude)
-
-%% PART 3B: Day-by-day moving average
+% PART 3B: Day-by-day moving average
 window_size=5;
 % Step 1: Get just the date part (no time)
 dates_only = dateshift(ttt.datetime, 'start', 'day');
@@ -541,7 +394,6 @@ dates_only = dateshift(ttt.datetime, 'start', 'day');
 % Step 2: Get unique dates and group indices
 [unique_dates, ~, day_group_ids] = unique(dates_only);
 
-% Initialize storage
 avg_velocity    = [];
 avg_amplitude   = [];
 avg_depth       = [];
@@ -576,7 +428,6 @@ for d = 1:length(unique_dates)
         avg_d_day(i) = nanmean(d_window);
     end
 
-    % Append to full arrays
     avg_velocity    = [avg_velocity; avg_v_day];
     avg_amplitude   = [avg_amplitude; avg_a_day];
     avg_depth       = [avg_depth; avg_d_day];
@@ -588,6 +439,8 @@ bin_centers = bin_edges(1:end-1) + diff(bin_edges)/2;
 [~, ~, bin_indices] = histcounts(avg_depth, bin_edges);
 
 subplot(1,2,2)
+add_reference_lines()
+hold on
 plot_moving_averages(bin_centers,bin_indices,avg_velocity,avg_amplitude)
 set(gca, 'XDir','reverse')
 
@@ -605,30 +458,35 @@ function plot_moving_averages(bin_centers,bin_indices,avg_velocity,avg_amplitude
         jitter = (rand(size(v)) - 0.5) * 5;
     
         % scatter(bin_centers(b-window_size) + jitter, v, a * 1e3, a, 'filled', 'MarkerFaceAlpha', 0.7);
-        scatter(bin_centers(b) + jitter, v, a * 1e4/4, a, 'filled', 'MarkerFaceAlpha', 0.7);
+        scatter(bin_centers(b) + jitter, v, a/3, a, 'filled', 'MarkerFaceAlpha', 0.7);
     end
-    
-    add_reference_lines()
     
     % xlabel('Depth (m)');
     % ylabel('propagation speed (m/s)');
     % title('5-pt avg. propagation speed binned by Depth');
     % subtitle('Lat 21.0012–21.1012');
-    xlim([-800 -200]);
-    ylim([0.5 3.5]);
+    xlim([-1000 -500]);
+    ylim([1 3]);
     % cb = colorbar('southoutside');             
-    cb.Label.String = 'Amplitude (psi)'; 
-    caxis([0 0.07]);
+    cb.Label.String = 'Amplitude (Pa)'; 
+    caxis([100 500]);
     colormap(brewermap([],"YlOrRd"))
     grid on;
     % hold off;
 end
 
 function add_reference_lines()
-    yline(3.23, 'b--', 'LineWidth',2);
-    yline(2.22, 'b--', 'LineWidth',2);
-    % text(-850, 3.33, 'mean speed in deep basin (Ramp et al., 2010)', 'color', 'b')
-    % text(-850, 2.33, 'mean speed over cont. slope (Ramp et al., 2010)', 'color', 'b')
+% Mean speed on continental slope from Ramp (2010)
+    y0 = 2.22;
+    dy = 0.18;
+    
+    ymin = y0 - dy;
+    ymax = y0 + dy;
+    
+    xmin = -2491;
+    xmax = -350;
+    
+    patch([xmin xmax xmax xmin], [ymin ymin ymax ymax], [0.7 0.7 0.7], 'FaceAlpha', 0.3, 'EdgeColor', 'none'); 
 end
 
 function bubblelegend(sizeVals, labels, color, location)

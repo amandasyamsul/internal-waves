@@ -16,22 +16,19 @@ addpath('/Users/amandasyamsul/Documents/MATLAB/OIW/seismic');
 % !ls -1 0*svg > Filenames
 
 detection = readtable('detections_reviewed.csv');
-all_detections = readtable('all_detections3.csv');
+all_detections = readtable('all_detections5.csv');
 hdh = load('bb01_dec_1Hz_all_HDH.mat');
-hhz = load('bb01_dec_1Hz_all_HHZ.mat');
-hh1 = load('bb01_dec_1Hz_all_HH1.mat');
+hhz = load('bb01_dec_1Hz_all_HH1.mat');
 hh2 = load('bb01_dec_1Hz_all_HH2.mat');
+hh1 = load('bb01_dec_1Hz_all_HHZ.mat'); % switch HH1 and HHZ
 
-m = [5:8]; % month
+m = [7:10]; % month
 
 % OBS coordinates
 obs_coords = [21.00116, 117.40267];
 
-% Convert the times from datenum to datetime
-hdh_times = datetime(hdh.t, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
-hh1_times = datetime(hh1.t, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
-hh2_times = datetime(hh2.t, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
-hhz_times = datetime(hhz.t, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
+% Convert the times from datenum to datetime (HDH, HH1, HH2, and HHZ all use same times)
+t = datetime(hdh.t, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:ss');
 
 % col_names = {'det', 'type', 'template'};
 % detection_times = table(detection.DetectionTime, detection.Type, detection.TemplateHDH, 'VariableNames', col_names);
@@ -41,41 +38,27 @@ hhz_times = datetime(hhz.t, 'ConvertFrom', 'datenum', 'Format', 'd-MMM-y HH:mm:s
 month_times = detection.DetectionTime;
 
 % Filter data to match desired timeframe
-hdh_month_idx = (year(hdh_times) == 2020) & ismember(month(hdh_times), m);
-hdh_month_times = hdh_times(hdh_month_idx);
+month_idx = (year(t) == 2020) & ismember(month(t), m);
+month_times = t(month_idx);
 
-hh1_month_idx = (year(hh1_times) == 2020) & ismember(month(hh1_times), m);
-hh1_month_times = hh1_times(hh1_month_idx);
+hdh_mt = t(month_idx);
+% hdh_mt = t; % Use this instead when running full analysis
 
-hh2_month_idx = (year(hh2_times) == 2020) & ismember(month(hh2_times), m);
-hh2_month_times = hh2_times(hh2_month_idx);
+hdh_md = hdh.d(month_idx); 
+hh1_md = hh1.d(month_idx); 
+hh2_md = hh2.d(month_idx); 
+hhz_md = hhz.d(month_idx); 
 
-hhz_month_idx = (year(hhz_times) == 2020) & ismember(month(hhz_times), m);
-hhz_month_times = hhz_times(hhz_month_idx);
+% hdh_md = hdh.d; % Use this instead when running full analysis
+% hh1_md = hh1.d;
+% hh2_md = hh2.d;
+% hhz_md = hhz.d;
 
-% hdh_mt = hdh_times(hdh_month_idx);
-hdh_mt = hdh_times;
+hdh_md_psi = hdh_md/1676128.86; % correction factor to convert to psi
+hdh_md = hdh_md_psi * 6894.76; % convert psi to Pa
 
-% hdh_md = hdh.d(hdh_month_idx);
-hdh_md = hdh.d;
-hhz_md = hhz.d;
-hh1_md = hh1.d;
-hh2_md = hh2.d;
+kuril = [datetime(2020, 3, 25, 2, 56, 16) datetime(2020, 3, 25, 3, 7, 16)];
 
-hdh_md = hdh_md/1676128.86; % correction factor to convert pressure to psi
-%%
-% close all;
-% 
-% figure()
-% ax(1) = subplot(2,1,1)
-% plot(hdh_mt, hdh_md, 'DisplayName', 'HDH');
-% ax(2) = subplot(2,1,2)
-% plot(hh1_mt, hh1_md, 'DisplayName', 'HH1');
-% hold on
-% plot(hhz_mt, hhz_md, 'DisplayName', 'HHZ');
-% plot(hh2_mt, hh2_md, 'DisplayName', 'HH2');
-% legend()
-% linkaxes([ax], 'x')
 %% Define the time ranges to exclude around the artifacts
 artifact_times = [datetime('5-May-2020 06:20:00'),
     datetime('12-May-2020 06:20:00'), 
@@ -107,9 +90,6 @@ for i = 1:length(artifact_times)
     exclude_start = artifact_times(i);
     exclude_end = artifact_times(i) + exclude_durations;
     valid_indices_hdh = valid_indices_hdh & ~(hdh_mt >= exclude_start & hdh_mt <= exclude_end);
-    % valid_indices_hh1 = valid_indices_hh1 & ~(hh1_mt >= exclude_start & hh1_mt <= exclude_end);
-    % valid_indices_hh2 = valid_indices_hh2 & ~(hh2_mt >= exclude_start & hh2_mt <= exclude_end);
-    % valid_indices_hhz = valid_indices_hhz & ~(hhz_mt >= exclude_start & hhz_mt <= exclude_end);
 end
 
 % Define the gap period
@@ -130,12 +110,13 @@ d_valid_hh2 = hh2_md(valid_indices_hdh);
 t_interp = (hdh_mt(1):seconds(1):hdh_mt(end));
 d_interp = interp1(t_valid_hdh, d_valid_hdh, t_interp);
 
+%%
 d_interp_hhz = interp1(t_valid_hdh, d_valid_hhz, t_interp);
 d_interp_hh1 = interp1(t_valid_hdh, d_valid_hh1, t_interp);
 d_interp_hh2 = interp1(t_valid_hdh, d_valid_hh2, t_interp);
 
 % Apply the bandpass filter to the data, demean and detrend the filtered data
-hdh_demeaned = d_interp - mean(d_interp);
+hdh_demeaned = d_interp - nanmean(d_interp);
 hdh_detrended = detrend(hdh_demeaned);
 
 hhz_demeaned = d_interp_hhz - mean(d_interp_hhz);
@@ -166,11 +147,32 @@ fnyq = Fs / 2;
 % low pass
 % Fc = 1/(3600*8);
 % [b, a] = butter(2, Fc / fnyq, 'low'); % 2nd order Butterworth filter
+%%
+close all;
+clc;
+
+nn = 320;
+con_window=sin(pi*(1:nn)./nn);
+con_window=con_window./sum(con_window);
+
+kuril = [datetime(2020, 3, 25, 2, 56, 16) datetime(2020, 3, 25, 3, 7, 16)];
+oct8 = [datetime(2020, 10, 8, 5, 0, 0) datetime(2020, 10, 8, 6, 0, 0)];
+figure()
+ax(1) = subplot(2,1,1)
+plot(t_interp, hdh_demeaned,'k', 'DisplayName', 'HDH');
+grid on
+ax(2) = subplot(2,1,2)
+plot(t_interp, conv(hdh_demeaned, con_window, 'same'),'k', 'DisplayName', 'HDH convolved');
+ylim([-200 200])
+grid on
+legend()
+linkaxes([ax], 'x')
+xlim(oct8)
 
 %% Bandpass Butterworth filter design
 clc
-Fc1 = 1 / 100;
-Fc2 = 1 / 20;
+Fc1 = 1 / 10000;
+Fc2 = 1 / 100;
 [b, a] = butter(2, [Fc1 Fc2] / fnyq, 'bandpass'); % 2nd order Butterworth filter
 hdh_filtered_demeaned = filtfilt(b, a, hdh_detrended);
 hhz_filtered_demeaned = filtfilt(b, a, hhz_detrended);
@@ -180,7 +182,7 @@ hh2_filtered_demeaned = filtfilt(b, a, hh2_detrended);
 
 close all; clc
 % time_x = [datetime(2020,3,25,2, 57, 0), datetime(2020,3,25, 2, 58, 0)];
-time_x = [datetime(2020,5,9,4, 0, 0), datetime(2020,5,9, 5, 30, 0)];
+time_x = [datetime(2020,5,1,0, 0, 0), datetime(2020,5,31,0, 0, 0)];
 t_cut_idx = (t_valid_hdh > time_x(1)) & (t_valid_hdh < time_x(2));
 t_cut = t_valid_hdh(t_cut_idx);
 
@@ -224,17 +226,19 @@ ax(1) = subplot(2,1,1);
 
 ax(1) = subplot(2,1,1);
 hold on;
-hdh_plot = detrend((hdh_conv(t_cut_idx)-mean(hdh_conv(t_cut_idx)) ) );
-plot(t_cut, hdh_plot )
-legend('HDH convolved')
+% hdh_plot = detrend((hdh_conv(t_cut_idx)-mean(hdh_conv(t_cut_idx)) ) );
+correct_hdh = detrend(d_valid_hdh - mean(d_valid_hdh) );
+plot(t_interp, hdh_filtered_demeaned )
+legend('HDH')
 xlim(time_x);
 legend;
 grid on;
 
 ax(2) = subplot(2,1, 2);
-hhz_velocity = detrend((hhz_conv(t_cut_idx)-mean(hhz_conv(t_cut_idx)) ) / obs_correction );
-plot(t_cut, cumsum(hhz_velocity) )
-legend('HHZ convolved & integrated')
+% hhz_velocity = detrend((hhz_conv(t_cut_idx)-mean(hhz_conv(t_cut_idx)) ) / obs_correction );
+correct_hhz = detrend(d_valid_hhz - mean(d_valid_hhz) );
+plot(t_interp, hhz_filtered_demeaned )
+legend('HHZ')
 xlim(time_x);
 legend;
 grid on;
@@ -271,10 +275,8 @@ detection_window = table(velocity_window_start', month_times, velocity_window_en
 nn = 320;
 con_window=sin(pi*(1:nn)./nn);
 con_window=con_window./sum(con_window);
-%old_con_window=ones(1,nn)/nn;
 
 my_data = conv(d_interp,con_window,'same');
-% my_data = d_interp;
 my_time = t_interp;
 
 for i = 1:height(detection_window)
@@ -348,6 +350,7 @@ detection.period = (crest_time-trough_time)';
 
 % for f = 1:height(detection)
    
+% for f = [3, 61, 252, 376]
 for f = 376
     % close all;
 
@@ -363,16 +366,16 @@ for f = 376
     time_subset = my_time(time_indices);
 
     figure()
-    plot(time_subset, demeaned_data)
+    plot(time_subset, demeaned_data, 'LineWidth',1.5)
     hold on
 
     % Plot crests and troughs
-    scatter(detection.crest_time(f), detection.crests(f), 'filled', 'r')
+    scatter(detection.crest_time(f), detection.crests(f), 'filled', 'b')
     scatter(detection.trough_time(f), detection.troughs(f), 'filled', 'r')
-    yline(0);
+    yline(0, 'LineWidth',1);
     % scatter(detection.T1s(f), 0, 'filled', 'b')
     % scatter(detection.T2s(f), 0, 'filled', 'g')
-    legend('HDH', 'Crest', 'Trough','y=0')%,'T1', 'T2')
+    legend('HDH', 'Crest', 'Trough')%,'T1', 'T2')
     % title('Ocean-Bottom Pressure');
     % if ~isnat(detection.template(f))
     %     subtitle(['Template: ', datestr(detection.template(f), 'yy-mm-dd HH:MM:SS')]);
@@ -380,24 +383,38 @@ for f = 376
     %     subtitle('Template: NaT')
     % end
     % xlabel('Time');
-    % ylabel('Amplitude (psi)');
-    text(velocity_window_start(f) + minutes(10), 0.01, ...
-    ['period = ' num2str(minutes(detection.period(f)), '%.2f') ' minutes'])
-
+    % ylabel('Amplitude (Pa)');
+    % text(velocity_window_start(f) + minutes(10), 0.01, ...
+    % ['period = ' num2str(minutes(detection.period(f)), '%.2f') ' minutes'])
     grid on
     xlim(time_x);
-    % ylim([-0.07 0.07])
+    ylim([-200 200])
     f
     detection.Type(f)
     grid on;
 end
 
-
+% Examples in figure are f = 3, 61, 252, 376
 %% Remove signals that may not be internal waves
-bad_indices_original = [41 46 62 63 64 65 67 70 75 78 80 87 97 99 122 134 135 163 164 178 179 183 197 201 208 209 212 236 237 242 246 249 254 258 259 260 270 277 290 291 293 301 309 315 366 401 420 426 443 444 455 460];
+% bad_indices_original = [41 46 62 63 64 65 67 70 75 78 80 87 97 99 122 134 135 163 164 178 179 183 197 201 208 209 212 236 237 242 246 249 254 258 259 260 270 277 290 291 293 301 309 315 366 401 420 426 443 444 455 460];
 bad_indices2 = [41 46 54 62 63 64 65 67 75 78 86 87 97 99 135 164 178 183 197 209 259 260 284 330 401 420 443 444 455] ;
 % % filtered_waves = detection_window;
 filtered_detections = detection;
 filtered_detections(bad_indices2, :) = []; % Removes the row(s)
 % remove aug 11 6.57 pm
-writetable(filtered_detections, 'all_detections4.csv');
+writetable(filtered_detections, 'all_detections5.csv');
+
+%%
+function [t_full, d_full] = mergeChannel(D, chanName)
+    % Find all records for this channel
+    idx = find(strcmp(strtrim({D.ChannelIdentifier}), chanName));
+    
+    % Concatenate data and times
+    t_full = vertcat(D(idx).t);
+    d_full = vertcat(D(idx).d);
+    
+    % Sort by time in case records are out of order
+    [t_full, order] = sort(t_full);
+    d_full = d_full(order);
+end
+

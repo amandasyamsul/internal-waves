@@ -61,7 +61,7 @@ fs = 14;
 
 % % Get table of averages
 % avg_table = get_averages(T);
-% writetable(avg_table, 'avg_OIW_2018_data.csv');
+% writetable(avg_table
 
 % Defining datasets
 
@@ -118,6 +118,15 @@ lat = ncread("gebco_2024_n21.5_s20.0_w116.2_e117.7.nc", "lat");
 % Compute average depth along each longitude point
 avg_depth_along_lon = mean(bathymetry, 1, 'omitnan'); % Average along latitude dimension
 
+% Find indices within the latitude band
+lat_idx = lat >= 21.0012 & lat <= 21.1012;
+
+% Subset bathymetry to only those latitudes
+bathymetry_latband = bathymetry(lat_idx, :);
+
+% Now compute the average along latitude dimension (rows)
+avg_depth_along_lon_latband = mean(bathymetry_latband, 1, 'omitnan'); 
+
 for i = 1:length(years)
     sorted_xes = sort(unique(data_all{i}.x_coord) );
     minxes(i) = sorted_xes(2); % ignore i=1 because we don't want x=0
@@ -133,40 +142,55 @@ figure()
 contourf(lon, lat, bathymetry, 50, 'LineStyle', 'none');
 hold on
 plot(obs_coords(2),obs_coords(1), 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','blue','Marker', '^','MarkerSize',10);
+yline(21.0012, 'k', "LineWidth",1)
+yline(21.1012, 'k', "LineWidth",1)
+
 
 % OBS bounds box
-space = 0.05;
-obs_x1 = obs_coords(2) - space/2;
-obs_x2 = obs_coords(2) + space*(3/2);
-obs_y1 = obs_coords(1);
-obs_y2 = obs_coords(1) + space*2;
-
-x = [obs_x1, obs_x2, obs_x2, obs_x1, obs_x1];
-y = [obs_y1, obs_y1, obs_y2, obs_y2, obs_y1];
-plot(x, y, 'k-', 'LineWidth', 3);
+% space = 0.05;
+% obs_x1 = obs_coords(2) - space/2;
+% obs_x2 = obs_coords(2) + space*(3/2);
+% obs_y1 = obs_coords(1);
+% obs_y2 = obs_coords(1) + space*2;
+% 
+% x = [obs_x1, obs_x2, obs_x2, obs_x1, obs_x1];
+% y = [obs_y1, obs_y1, obs_y2, obs_y2, obs_y1];
+% plot(x, y, 'k-', 'LineWidth', 3);
 
 xline(117.0792445 ,'k--', 'LineWidth',2)
 colormap('turbo');
 colorbar('southoutside');
 grid on;
-legend('bathymetry', 'OBS', 'OBS bounds', 'data cutoff')
-legend show;
-title('Bathymetric Contour Map (21.5N to 20.0S; 116.2W 117.7E)','FontSize', fs);
-% xlabel('Longitude', 'FontSize', fs)
-% ylabel('Latitude', 'FontSize', fs)
-
+% legend('Bathymetry', 'OBS', 'Cutoff longitude')
+% legend show;
+% title('Bathymetric Contour Map (21.5N to 20.0S; 116.2W 117.7E)','FontSize', fs);
 
 % Plot average depth versus longitude
-figure();
+figure()
+ax(1) = subplot(2,1,1)
 plot(lon, avg_depth_along_lon, 'LineWidth', 2);
-xline(obs_coords(2), 'g-', 'LineWidth',2)
-xline(117.0792445, 'k-', 'LineWidth',2)
-legend('depth', 'OBS', 'Dongsha')
-xlabel('Longitude', 'FontSize', fs)
-ylabel('Average depth (m)', 'FontSize', fs)
-title('Average Depth Along Longitude', 'FontSize', fs, 'FontAngle', 'italic');
+xline(obs_coords(2), 'b-', 'LineWidth',2)
+xline(117.0792445, 'k--', 'LineWidth',2)
+legend('Depth', 'OBS', 'Cutoff longitude')
+xlim([116.2 117.7])
+% xlabel('Longitude', 'FontSize', fs)
+% ylabel('Average depth (m)', 'FontSize', fs)
+% title('Average Depth Along Longitude', 'FontSize', fs, 'FontAngle', 'italic');
 grid on;
 
+% Plot average depth versus longitude for latband
+ax(2) = subplot(2,1,2)
+plot(lon, avg_depth_along_lon_latband, 'LineWidth', 2);
+xline(obs_coords(2), 'b-', 'LineWidth',2)
+xline(117.0792445, 'k--', 'LineWidth',2)
+legend('Depth', 'OBS', 'Cutoff longitude')
+xlim([116.2 117.7])
+% xlabel('Longitude', 'FontSize', fs)
+% ylabel('Average depth (m)', 'FontSize', fs)
+% title('Average Depth Along Longitude', 'FontSize', fs, 'FontAngle', 'italic');
+grid on;
+
+% linkaxes([ax], 'x')
 %%
 close all;
 
@@ -197,18 +221,27 @@ ylabel('Depth (m)')
 title(['Bathymetry along latitude ', num2str(lat(lat_idx))])
 grid on
 
-%% Plot average velocity binned by depth
+%% Plot average speed binned by depth
 close all;
 cmap = autumn(length(years));
 
 fig = figure();
 num_years = length(years);
 
+% Mean speed on continental slope from Ramp (2010)
+y0 = 2.22;
+dy = 0.18;
+
+ymin = y0 - dy;
+ymax = y0 + dy;
+
+xmin = -2491;
+xmax = -350;
+
+patch([xmin xmax xmax xmin], [ymin ymin ymax ymax], [0.7 0.7 0.7], 'FaceAlpha', 0.3, 'EdgeColor', 'none'); 
+
 for i = 1:num_years
-% for i = 9
-    % Subplot grid (adjust rows/cols depending on number of years)
-    % subplot(2, ceil(num_years/2), i)
-    subplot(5, 2, i)
+    % subplot(2,5, i)
     
     % Time filter
     start_date = datetime(years(i), 5, 1); 
@@ -243,18 +276,15 @@ for i = 1:num_years
     x_fit = linspace(min(x), max(x), 100);
     y_fit = polyval(p, x_fit);
 
-    % Plot
     hold on;
-    add_reference_lines()
-    plot(x_fit, y_fit, 'k-', 'LineWidth', 1.5);
-    xline(-900, 'k--', 'LineWidth', 2)
+    
+    % plot(x_fit, y_fit, 'k-', 'LineWidth', 1.5);
+    
     errorbar(bin_centers, avg_velocity, std_velocity, 'k.', 'CapSize', 0, 'HandleVisibility', 'off');
     scatter(bin_centers, avg_velocity, 80, cmap(i, :), 'filled', 'MarkerEdgeColor', 'k');
 
-    title(num2str(years(i)), 'FontSize', fs, 'FontName','.AppleSystemUIFont');
-    text(-500, 0.7, ['slope: ' num2str(p(1), '%.5f')], 'color', 'k', 'FontSize', fs-2)
-    xlim([-1200, -400])
-    ylim([0, 3.5])
+    % title(num2str(years(i)), 'FontSize',14 );
+    % text(-500, 0.7, ['slope: ' num2str(p(1), '%.5f')], 'color', 'k', 'FontSize', fs-2)
     set(gca, "XDir", "reverse")
     grid on;
 
@@ -280,12 +310,16 @@ for i = 1:num_years
     stdev_slope(i) = std(c_store1);
     stdev_int(i) = std(c_store2);
 end
-
+legend()
+xlim([-1300, -400])
+ylim([0.5, 4])
+xline(-900, 'k--', 'LineWidth', 2)
+xline(-619, 'm', 'LineWidth', 2)
 all=axes(fig,'visible','off'); 
 all.XLabel.Visible='on';
 all.YLabel.Visible='on';
-% xlabel(all, 'Depth (m)', 'FontSize', fs-2)
-% ylabel(all, 'Average propagation speed (m/s)', 'FontSize', fs-2)
+
+
 
 %% Slope of velocity as a function of depth
 figure()
@@ -306,13 +340,13 @@ close all;
 % ---- Style defaults ----
 fs   = 10;                      % base font size
 lw   = 0.8;                     % errorbar line width
-ms   = 16;                      % scatter marker size
+ms   = 45;                      % scatter marker size
 yl   = [85 116];                % y-limits for back azimuth
 mo_ticks = 5:8;                 % May–Aug tick months
 
 % ---- Figure + tiling ----
 fig2 = figure('Color','w','Units','inches','Position',[0 0 7.0 9.0]); %#ok<NASGU>
-tlo  = tiledlayout(5,2,'TileSpacing','compact','Padding','compact');
+tlo  = tiledlayout(2,5,'TileSpacing','compact','Padding','compact');
 
 colormap('autumn')
 
