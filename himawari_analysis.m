@@ -1,6 +1,7 @@
 % Amanda Syamsul
 % April 11th 2024
 % Analysis on OIW Position & Velocity Near Dongsha Atoll
+% Relevant outputs: Figs. 3d and S5
 
 close all; clear all; clc;
 
@@ -135,94 +136,9 @@ end
 min_xcoord = min(minxes);
 minlon = lon1 + (min_xcoord - x_min) / image_width * (lon2 - lon1);
 
-%% Bathymetry figures
-close all;
 
-figure()
-contourf(lon, lat, bathymetry, 50, 'LineStyle', 'none');
-hold on
-plot(obs_coords(2),obs_coords(1), 'p','DisplayName', 'OBS Station', 'MarkerFaceColor','blue','Marker', '^','MarkerSize',10);
-yline(21.0012, 'k', "LineWidth",1)
-yline(21.1012, 'k', "LineWidth",1)
+%% Manuscript Fig. 3 - Plot average speed binned by depth
 
-
-% OBS bounds box
-% space = 0.05;
-% obs_x1 = obs_coords(2) - space/2;
-% obs_x2 = obs_coords(2) + space*(3/2);
-% obs_y1 = obs_coords(1);
-% obs_y2 = obs_coords(1) + space*2;
-% 
-% x = [obs_x1, obs_x2, obs_x2, obs_x1, obs_x1];
-% y = [obs_y1, obs_y1, obs_y2, obs_y2, obs_y1];
-% plot(x, y, 'k-', 'LineWidth', 3);
-
-xline(117.0792445 ,'k--', 'LineWidth',2)
-colormap('turbo');
-colorbar('southoutside');
-grid on;
-% legend('Bathymetry', 'OBS', 'Cutoff longitude')
-% legend show;
-% title('Bathymetric Contour Map (21.5N to 20.0S; 116.2W 117.7E)','FontSize', fs);
-
-% Plot average depth versus longitude
-figure()
-ax(1) = subplot(2,1,1)
-plot(lon, avg_depth_along_lon, 'LineWidth', 2);
-xline(obs_coords(2), 'b-', 'LineWidth',2)
-xline(117.0792445, 'k--', 'LineWidth',2)
-legend('Depth', 'OBS', 'Cutoff longitude')
-xlim([116.2 117.7])
-% xlabel('Longitude', 'FontSize', fs)
-% ylabel('Average depth (m)', 'FontSize', fs)
-% title('Average Depth Along Longitude', 'FontSize', fs, 'FontAngle', 'italic');
-grid on;
-
-% Plot average depth versus longitude for latband
-ax(2) = subplot(2,1,2)
-plot(lon, avg_depth_along_lon_latband, 'LineWidth', 2);
-xline(obs_coords(2), 'b-', 'LineWidth',2)
-xline(117.0792445, 'k--', 'LineWidth',2)
-legend('Depth', 'OBS', 'Cutoff longitude')
-xlim([116.2 117.7])
-% xlabel('Longitude', 'FontSize', fs)
-% ylabel('Average depth (m)', 'FontSize', fs)
-% title('Average Depth Along Longitude', 'FontSize', fs, 'FontAngle', 'italic');
-grid on;
-
-% linkaxes([ax], 'x')
-%%
-close all;
-
-% Target latitude
-target_lat = 20.95;
-
-% Find index of closest latitude
-[~, lat_idx] = min(abs(lat - target_lat));
-
-% Extract bathymetry along that latitude
-bathy_profile = bathymetry1(:, lat_idx);
-
-% Plot
-figure()
-plot(lon, bathy_profile, 'k-', 'LineWidth', 1.5)
-hold on
-xline(117.36)
-xline(117.427)
-slope = (-97+615)/(117.36-117.427);
-% Choose coordinates where you want the text to appear
-xpos = mean(lon);   % midpoint of longitude range
-ypos = mean(bathy_profile);  % somewhere around average depth
-
-% Add text
-text(xpos, ypos, ['slope = ' num2str(slope, '%.3f')])
-
-ylabel('Depth (m)')
-title(['Bathymetry along latitude ', num2str(lat(lat_idx))])
-grid on
-
-%% Plot average speed binned by depth
-close all;
 cmap = autumn(length(years));
 
 fig = figure();
@@ -283,6 +199,8 @@ for i = 1:num_years
     errorbar(bin_centers, avg_velocity, std_velocity, 'k.', 'CapSize', 0, 'HandleVisibility', 'off');
     scatter(bin_centers, avg_velocity, 80, cmap(i, :), 'filled', 'MarkerEdgeColor', 'k');
 
+
+    avg_each_year(:, i+1) = avg_velocity';
     % title(num2str(years(i)), 'FontSize',14 );
     % text(-500, 0.7, ['slope: ' num2str(p(1), '%.5f')], 'color', 'k', 'FontSize', fs-2)
     set(gca, "XDir", "reverse")
@@ -310,83 +228,56 @@ for i = 1:num_years
     stdev_slope(i) = std(c_store1);
     stdev_int(i) = std(c_store2);
 end
-legend()
+
+% legend()
 xlim([-1300, -400])
 ylim([0.5, 4])
 xline(-900, 'k--', 'LineWidth', 2)
-xline(-619, 'm', 'LineWidth', 2)
+% xline(-619, 'm', 'LineWidth', 2)
 all=axes(fig,'visible','off'); 
 all.XLabel.Visible='on';
 all.YLabel.Visible='on';
 
 
+%% Manuscript Fig. S5 - Back Azimuth 2015-2024
 
-%% Slope of velocity as a function of depth
-figure()
-scatter(years, slopes, 50, 'filled');
-hold on
-errorbar(years, slopes, stdev_slope, 'k.', 'HandleVisibility', 'off');
-grid on
-axis ij
-xlim([2014,2025])
-title('Rate of Change of Velocity with Depth Over Time', 'FontSize', fs, 'FontAngle', 'italic')
-ylabel('slope (m/s per m)', 'FontSize', fs-2)
-xlabel('time', 'FontSize', fs-2)
-
-%% Back Azimuth (2015-2024)
-
-close all;
-
-% ---- Style defaults ----
 fs   = 10;                      % base font size
 lw   = 0.8;                     % errorbar line width
 ms   = 45;                      % scatter marker size
 yl   = [85 116];                % y-limits for back azimuth
 mo_ticks = 5:8;                 % May–Aug tick months
 
-% ---- Figure + tiling ----
-fig2 = figure('Color','w','Units','inches','Position',[0 0 7.0 9.0]); %#ok<NASGU>
-tlo  = tiledlayout(2,5,'TileSpacing','compact','Padding','compact');
+fig2 = figure('Color','w','Units','inches','Position',[0 0 7.0 9.0]);
+tlo  = tiledlayout(5,2,'TileSpacing','compact','Padding','compact');
 
 colormap('autumn')
 
 for i = 1:numel(years)
     ax = nexttile; hold(ax,'on');
 
-    % Fetch year-i data
     T   = data_avg{i}.datetime(:);
     baz = data_avg{i}.median_back_azimuth(:);
     sd  = data_avg{i}.back_azimuth_std_dev(:);
     std_dev(i) = mean(sd);
 
-    % Keep valid + time-sort
     valid = isfinite(baz) & isfinite(sd) & isfinite(datenum(T));
     T = T(valid); baz = baz(valid); sd = sd(valid);
     [T,ord] = sort(T); baz = baz(ord); sd = sd(ord);
 
-    % Error bars (light gray, no caps)
-    if ~isempty(T)
-        errorbar(ax, T, baz, sd, ...
+    errorbar(ax, T, baz, sd, ...
             'LineStyle','none','Color',[0.65 0.65 0.65], ...
             'CapSize',0,'LineWidth',lw);
-    end
 
-    % Points (black, slightly opaque to reduce clutter)
-    if ~isempty(T)
-        scatter(ax, T, baz, ms, 'k', 'filled', ...
+    scatter(ax, T, baz, ms, 'k', 'filled', ...
             'MarkerFaceAlpha',0.9, 'MarkerEdgeColor','none');
-    end
 
-    % Axes formatting
     ylim(ax, yl);
-    set(ax, 'YDir','reverse');          % same intent as axis ij
+    set(ax, 'YDir','reverse');     
     xlim(ax, [datetime(years(i),5,1) datetime(years(i),8,31)]);
 
-    % Month ticks & labels (May–Aug)
     xt = datetime(years(i), mo_ticks, 1);
     set(ax, 'XTick', xt, 'XTickLabel', cellstr(datestr(xt,'mmm')));
 
-    % Grid & styling
     grid(ax,'on'); ax.MinorGridAlpha = 0.15; ax.GridAlpha = 0.25; ax.LineWidth = 0.75;
     title(ax, num2str(years(i)), 'FontSize', fs, 'FontWeight','bold');
     set(ax, 'FontSize', fs, 'FontName', '.AppleSystemUIFont');
@@ -399,12 +290,7 @@ ylabel(tlo, 'Back azimuth (°)', 'FontSize', fs+4, 'FontWeight','bold');
 
 disp(sprintf('Mean std dev across years: %.2f', nanmean(std_dev)));
 
-% Optional export
-% exportgraphics(gcf, 'back_azimuth_2015_2024.png', 'Resolution', 600);
-% exportgraphics(gcf, 'back_azimuth_2015_2024.pdf');
-
 %% Propagation speed (2015-2024)
-close all;
 
 fig2 = figure()
 colormap('autumn')
@@ -446,7 +332,6 @@ all.XLabel.Visible='on';
 all.YLabel.Visible='on';
 
 %% Boxplot of propagation speeds by month (all years combined)
-close all;
 
 all_dates = [];
 all_vels  = [];
@@ -478,7 +363,6 @@ grid on
 
 %% Velocity vs Back Azimuth (day of year)
 
-% close all;
 figure()
 colormap('autumn')
 
@@ -516,7 +400,6 @@ c.TickLabels = {'May', 'June', 'July', 'Aug', 'Sept'};
 
 %% Velocity vs Back Azimuth (time of day)
 
-% close all;
 figure()
 colormap('hot')
 
@@ -544,24 +427,14 @@ c.Label.String = 'time of day';
 c.Ticks = [4, 5, 6, 7, 8, 9];  % Monthly ticks
 c.TickLabels = {'4 pm', '5 pm', '6 pm', '7 pm', '8 pm', '9 pm'};
 
-%% Individual year Back azimuth circle plots
-% close all;
-
-figure()
-plot_azimuth2(all_data_2020, 'Direction of wave source',  'May to September 2020')
-
-figure()
-plot_azimuth2(all_data_2019, 'Direction of wave source',  'May to September 2019')
 
 %% Combined BA circle plots
-close all;
 
 figure()
 p = polaraxes; 
 
 
 for i = 1:length(years)
-% for i = 3
     % Convert back azimuth to radians for polar plot
     azimuths_rad = deg2rad(data_all{i}.back_azimuth);
     
@@ -577,10 +450,11 @@ for i = 1:length(years)
     % hold off;
 end
 
-% Adjust the polar plot to set 0 degrees to North and clockwise direction
 p.ThetaDir = 'clockwise';
 p.ThetaZeroLocation = 'top';
-%%
+
+%% Functions
+
 function plot_azimuth2(data,label, subtitle)
     % Convert back azimuth to radians for polar plot
     azimuths_rad = deg2rad(data.back_azimuth);
@@ -620,3 +494,5 @@ function add_reference_lines()
     % text(-850, 3.33, 'mean speed in deep basin (Ramp et al., 2010)', 'color', 'b')
     % text(-850, 2.33, 'mean speed over cont. slope (Ramp et al., 2010)', 'color', 'b')
 end
+
+
