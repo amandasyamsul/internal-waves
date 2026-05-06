@@ -1,6 +1,8 @@
 # Using Ocean Bottom Pressure Measurements of Internal Waves in the South China Sea to Track the Annual Cycle of Stratification
 _Amanda Syamsul, Emily E. Brodsky, Ethan F. Williams, Heather R. Crume, Kristen A. Davis, Shiou-Ya Wang, Shu-Kun Hsu_
 
+[![DOI](https://zenodo.org/badge/807952825.svg)](https://doi.org/10.5281/zenodo.20059229)
+
 ## Research summary
 - Measurements of internal solitary wave period reveal variations in local stratification and its seasonal cycle.
 - Ocean-bottom pressure under large-amplitude internal solitary waves is dominated by non-hydrostatic effects. 
