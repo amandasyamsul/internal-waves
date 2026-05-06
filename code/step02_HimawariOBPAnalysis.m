@@ -18,7 +18,6 @@ addpath(fullfile(project_root, 'DrosteEffect-BrewerMap-3.2.5.0'));
 
 N2 = readtable('daily_max_N2_all.csv');
 tmd_output = readtable('tmd_output.csv');
-filtered_waves = readtable('filtered_waves.csv');
 all_detections = readtable('all_detections_new.csv');
 all_data_2020 = readtable('OIW_2020_data.csv');
 OBS_latband_data_2020 = readtable('IW_OBS_latband_2020.csv');
