@@ -8,12 +8,12 @@ _Amanda Syamsul, Emily E. Brodsky, Ethan F. Williams, Heather R. Crume, Kristen 
 
 
 ## Important content
-**step01_HimawariAnalysis**
+**step01_HimawariAnalysis.m**
 - Analyzes nonlinear internal wave propagation near the Dongsha OBS using satellite detections, bathymetry, and tidal models.
 - Quantifies relationships between period, amplitude, and velocity, including seasonal and depth-dependent trends.
 
-**step02_HimawariOBPAnalysis**
+**step02_HimawariOBPAnalysis.m**
 - Processes ocean-bottom pressure data from Dongsha Atoll to identify and characterize internal wave signals.
 
-**step03_ParameterSweep**
+**step03_ParameterSweep.m**
 - Runs extended KdV model showing influence of nonhydrostatic pressure on seafloor pressure signal
