@@ -1,11 +1,10 @@
-# Decadal Analysis of Nonlinear Internal Waves in the South China Sea Using Seafloor Instrumentation and Satellite
-_Amanda Syamsul, Emily E. Brodsky, Heather R. Crume, Ethan F. Williams, Kristen A. Davis, Shiou-Ya Wang, Shu-Kun Hsu_
+# Using Ocean Bottom Pressure Measurements of Internal Waves in the South China Sea to Track the Annual Cycle of Stratification
+_Amanda Syamsul, Emily E. Brodsky, Ethan F. Williams, Heather R. Crume, Kristen A. Davis, Shiou-Ya Wang, Shu-Kun Hsu_
 
 ## Research summary
-- Ocean-bottom pressure measurements reveal variations in local sea state
-- Seafloor instrumentation can measure pressure changes related to nonlinear internal waves and be used to observe wave period and amplitude changes over time, which cannot be obtained from satellite imagery
-- Geostationary satellite imagery can monitor decadal-scale variations, or lack thereof, in nonlinear internal wave propagation speeds and arrival directions
-- Integrating observation methods reveals nonhydrostatic processes influencing seafloor pressure signals
+- Measurements of internal solitary wave period reveal variations in local stratification and its seasonal cycle.
+- Ocean-bottom pressure under large-amplitude internal solitary waves is dominated by non-hydrostatic effects. 
+- Geostationary satellite imagery provides decadal-scale measurements of internal wave speed and arrival direction.
 
 
 ## Contents
